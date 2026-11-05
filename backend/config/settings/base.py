@@ -64,6 +64,14 @@ DATABASES = {
     )
 }
 
+# Local development and tests intentionally use process-local cache storage.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'devjobs-local',
+    }
+}
+
 AUTH_USER_MODEL = 'accounts.User'
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -80,6 +88,18 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+def jwt_token_rate_from_env(value):
+    """Return a valid DRF rate; empty values use the secure default."""
+    rate = (value or '').strip() or '5/minute'
+    count, separator, period = rate.partition('/')
+    if not separator or not count.isdecimal() or int(count) < 1 or period not in {
+        'second', 'minute', 'hour', 'day', 's', 'm', 'h', 'd'
+    }:
+        raise ImproperlyConfigured(
+            'JWT_TOKEN_RATE must use DRF rate syntax such as 5/minute.'
+        )
+    return rate
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -94,5 +114,10 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+    # Ignore client-supplied X-Forwarded-For unless an operator sets the trusted hop count.
+    'NUM_PROXIES': int(os.getenv('DRF_NUM_PROXIES', '0')),
+    'DEFAULT_THROTTLE_RATES': {
+        'jwt_token': jwt_token_rate_from_env(os.getenv('JWT_TOKEN_RATE'))
+    },
 }
 CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173').split(',')

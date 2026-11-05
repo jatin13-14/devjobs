@@ -25,7 +25,7 @@
 ## Delivery phases
 | Phase | Scope | Status |
 |---|---|---|
-| 0 | Repository, conventions, docs, CI baseline | Local setup and PostgreSQL checks verified; both hosted workflows passed on `ae02cd75182da08a7557289a6d26ede194a710d5` |
+| 0 | Repository, conventions, docs, CI baseline | Local setup and PostgreSQL checks verified; both hosted workflows passed on `fdd9f894c3a194422664168b728f40c9fcc669df` |
 | 1 | Auth, roles and profiles | Not started |
 | 2 | Companies and recruiter membership | Not started |
 | 3 | Job creation and publishing | Not started |
@@ -36,10 +36,10 @@
 | 8 | Security, accessibility, regression and deployment | Not started |
 
 ## Authentication foundation review (2026-11-05)
-- Email addresses are stored trimmed and case-folded in full; manager authentication and JWT issuance normalize inputs with the same policy. Existing account emails are normalized by migration `accounts.0002_normalize_existing_emails`; it aborts before updates if case-insensitive duplicates need manual resolution.
+- Email identity is ASCII-only, trimmed, and lowercase; manager authentication, JWT issuance, model saves, and database constraints use the same identity policy. Migration `accounts.0003_canonical_email_constraint` preflights legacy accounts and aborts without changing them if Unicode addresses or canonical duplicates exist.
 - Django superusers use the product `admin` role and retain Django's required `is_staff=True` and `is_superuser=True` invariants. This does not implement role-aware onboarding or other Phase 1 features.
 - Production HTTPS redirect, HSTS, and trusted reverse-proxy scheme handling are environment-configurable and remain disabled by default for redirects/HSTS and in local development. See `docs/LOCAL_DEVELOPMENT.md` for TLS proxy requirements.
-- PR #1 contains the review fixes. The current head is `ae02cd75182da08a7557289a6d26ede194a710d5`; backend and frontend GitHub Actions passed on that commit. PR #1 remains unmerged.
+- PR #1 current verified head is `fdd9f894c3a194422664168b728f40c9fcc669df`; backend and frontend GitHub Actions passed on that commit. PR #1 remains unmerged.
 
 ### Review-fix verification
 - Backend: `.venv/bin/ruff check .` passed. `ruff format --check` passed for the five changed Python files. A repository-wide formatter check identifies formatting differences in existing untouched files, so those were left unchanged.
@@ -83,5 +83,16 @@ The dated verification entries below are historical snapshots; where they descri
 - All four original review findings are resolved in the local working tree. No staging, commit, push, approval, or merge occurred.
 
 ## Hosted CI reconciliation (2026-11-05)
-- Current GitHub state for PR #1: head `ae02cd75182da08a7557289a6d26ede194a710d5`; backend workflow run [42062870540](https://github.com/jatin13-14/devjobs/actions/runs/42062870540) passed and frontend workflow run [42062870578](https://github.com/jatin13-14/devjobs/actions/runs/42062870578) passed on that exact commit.
+- Latest verified PR #1 head: `fdd9f894c3a194422664168b728f40c9fcc669df`; backend and frontend GitHub Actions passed on that exact commit. The backend workflow uses PostgreSQL 17.
 - The older notes below and above that say workflows were unregistered, hosted runs were pending, or no commit/push had occurred describe earlier snapshots and are retained as historical records. They are superseded by this current state. PR #1 is not merged.
+
+## Final review findings (local changes, 2026-11-05)
+- Email identity is ASCII-only, trimmed, and lowercased. `0003` checks legacy rows before adding ASCII/canonical-storage checks and canonical uniqueness; failure leaves account records untouched. Unicode addresses require manual resolution and will not be silently converted or deleted. `save(update_fields=...)` raises if an in-memory email change is omitted from `update_fields`.
+- JWT token issuance has a scoped anonymous rate limit. Blank/unset `JWT_TOKEN_RATE` falls back to `5/minute`; malformed values fail settings initialization. Production requires a shared cache (such as Redis) and sanitized forwarded IP headers. DRF `NUM_PROXIES` defaults to zero.
+- PostgreSQL 16.15 full backend suite passed (26 tests), including migration tests for mixed-case and whitespace collision preflight, Unicode rejection and Unicode casefold edge cases, account-data preservation on failure, constraint enforcement, and reverse migration. Django checks, migration consistency, Ruff, frontend lint/test/build, and `git diff --check` passed for this working tree. The frontend build retains its existing 609.25 kB chunk advisory. These local changes have not been pushed and have not received hosted CI.
+
+## Remaining staged review fixes (2026-11-05)
+- Email identity trims exactly ASCII space, tab, line feed, carriage return, form feed, and vertical tab before ASCII lowercase. Model normalization, migration preflight, PostgreSQL canonical check, and unique expression use the same policy. PostgreSQL migration tests cover tab/newline and form-feed/vertical-tab collisions, preservation on preflight failure, and direct SQL rejection of padded aliases.
+- Production settings require `DJANGO_CACHE_URL` with a reachable Redis/Rediss endpoint and fail during startup if missing or unavailable. Development and tests retain local-memory caching. The anonymous JWT throttle remains configurable and defaults to `5/minute`.
+- Verified against PostgreSQL 16.15: 28 backend tests passed, including tab/newline and form-feed/vertical-tab preflight collisions, byte-for-byte data preservation when preflight fails, direct SQL rejection of padded aliases, and the explicit local-memory test cache check. Django system checks and migration consistency passed; Ruff lint and formatting checks passed; frontend lint passed, 1 Vitest test passed, and Vite build passed (existing 609.25 kB chunk advisory remains); `git diff --check` passed.
+- Production settings probes confirmed startup fails clearly when `DJANGO_CACHE_URL` is absent and when Redis is unreachable/misconfigured. No production Redis service was available to verify a successful live connection.
