@@ -35,6 +35,18 @@
 | 7 | Admin moderation | Not started |
 | 8 | Security, accessibility, regression and deployment | Not started |
 
+## Authentication foundation review (2026-11-05)
+- Email addresses are stored trimmed and case-folded in full; manager authentication and JWT issuance normalize inputs with the same policy. Existing account emails are normalized by migration `accounts.0002_normalize_existing_emails`; it aborts before updates if case-insensitive duplicates need manual resolution.
+- Django superusers use the product `admin` role and retain Django's required `is_staff=True` and `is_superuser=True` invariants. This does not implement role-aware onboarding or other Phase 1 features.
+- Production HTTPS redirect, HSTS, and trusted reverse-proxy scheme handling are environment-configurable and remain disabled by default for redirects/HSTS and in local development. See `docs/LOCAL_DEVELOPMENT.md` for TLS proxy requirements.
+- Review findings are implemented locally; requested verification results are recorded after the checks below. PR remains unmerged and no commit/push is made.
+
+### Review-fix verification
+- Backend: `.venv/bin/ruff check .` passed. `ruff format --check` passed for the five changed Python files. A repository-wide formatter check identifies formatting differences in existing untouched files, so those were left unchanged.
+- Backend Django check and `makemigrations --check --dry-run` passed. Fresh SQLite verification via `DATABASE_URL='sqlite:///:memory:' .venv/bin/python manage.py migrate --noinput` applied all migrations, including `accounts.0002_normalize_existing_emails`. Pytest passed (8 tests); SimpleJWT emitted a warning because the local development signing key is shorter than 32 bytes.
+- Frontend `npm run lint`, `npm test` (1 test), and `npm run build` passed. Vite retains its existing advisory for the 609.25 kB minified JavaScript chunk.
+- `git diff --check` passed. No commit, push, PR approval, or merge was performed.
+
 ## Definition of done
 A task is complete only when:
 - Acceptance criteria are met.
@@ -59,3 +71,13 @@ A task is complete only when:
 - Local CI workflow files in `.github/workflows/frontend.yml` and `backend.yml` declare push and pull request events with path filters; backend CI provisions PostgreSQL 17 and runs Django checks, migration consistency/application, tests, and Ruff. GitHub API checks on 2026-11-05 returned zero registered workflows and zero runs; `git ls-tree` confirms the workflow files are absent from `main`'s latest commit. Commit and push the workflow files or open/update a PR containing them to trigger CI.
 - `git diff --check` passed. A scan of tracked files found no apparent real secrets or credentials; `.env.example` contains documented local-only placeholders (`devjobs` database credentials and replacement secret text). `.env` and `frontend/.env` are ignored.
 - Live PostgreSQL checks passed locally against PostgreSQL 18.3: Django system check, migration consistency, full migrations, 2 backend tests, and Ruff. Hosted PostgreSQL 17 CI remains unverified until the workflow files are published.
+
+## Additional review verification (2026-11-05)
+- Exact migration `accounts.0002_normalize_existing_emails` was executed with Django's migration executor on a disposable PostgreSQL 16.15 cluster/database under `/tmp` at port 55432. Starting at `0001`, mixed-case and padded addresses were normalized by `0002`. A canonical duplicate pair caused the migration to raise before its queued update batch ran; every email remained byte-for-byte unchanged and `0002` was not recorded in `django_migrations`.
+- `0002` has `atomic=True` by Django default. It uses portable ORM iteration and `bulk_update`; there is no PostgreSQL-version-specific SQL. CI declares PostgreSQL 17. The local server was 16.15, so PG17 runtime execution is still pending hosted CI.
+- Manager creation, natural-key authentication, and JWT input use the same `normalize_email()` method. Mixed case and surrounding whitespace are covered and passed against PostgreSQL. Database uniqueness rejected canonical duplicates. Password hashing and invalid-password checks remain intact.
+- Superuser creation enforces `is_staff=True`, `is_superuser=True`, and product role `admin`; ordinary user creation now rejects those admin grants. Regression tests passed.
+- Production enables secure session and CSRF cookies. HTTPS redirect and HSTS remain opt-in. Django trusts `X-Forwarded-Proto: https` only when `DJANGO_SECURE_PROXY_SSL_HEADER=true`; deployment docs require a trusted TLS-terminating proxy to overwrite this header and forward traffic over a private trusted connection.
+- `DJANGO_SECRET_KEY` is now required and must be at least 32 characters. The example leaves it empty; docs say to generate a unique key per environment. Backend checks used a generated disposable runtime key and emitted no SimpleJWT short-key warning.
+- Backend PostgreSQL system checks, migration consistency, Ruff lint, and all 9 tests passed. Frontend lint, its 1 test, and production build passed. Vite still reports its 609.25 kB chunk-size advisory. Ruff formatter checking the touched base settings file reports existing formatting differences; it was not reformatted wholesale.
+- All four original review findings are resolved in the local working tree. No staging, commit, push, approval, or merge occurred.

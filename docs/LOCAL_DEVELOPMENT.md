@@ -22,11 +22,13 @@ python3 --version
 brew services start postgresql@17
 ```
 
-Create a local role and database. When prompted, use `devjobs` as the password to match the ignored local example configuration, or edit `DATABASE_URL` in `.env` to match your choice.
+Create a local PostgreSQL role and database using names and a password you choose. Keep the password local; do not put it in a tracked file. For example, `createuser --createdb --pwprompt <your-role>` prompts for a password, and `createdb --owner=<your-role> <your-database>` creates the database.
 
 ```sh
-"$(brew --prefix postgresql@17)/bin/createuser" --createdb --pwprompt devjobs
-"$(brew --prefix postgresql@17)/bin/createdb" --owner=devjobs devjobs
+read -r -p 'Local PostgreSQL role name: ' PG_ROLE
+read -r -p 'Local PostgreSQL database name: ' PG_DATABASE
+"$(brew --prefix postgresql@17)/bin/createuser" --createdb --pwprompt "$PG_ROLE"
+"$(brew --prefix postgresql@17)/bin/createdb" --owner="$PG_ROLE" "$PG_DATABASE"
 ```
 
 ## Configure local environment
@@ -38,19 +40,36 @@ cp .env.example .env
 cp frontend/.env.example frontend/.env
 ```
 
-`.env` is ignored by Git. Change its development database credentials if they differ from the local PostgreSQL role. The backend loads this root `.env` automatically; the Vite client reads `frontend/.env`.
+`.env` is ignored by Git. Set `DATABASE_URL` there to your PostgreSQL connection details, using the role, password, host, port, and database you configured. URL-encode reserved characters in the password. The backend loads this root `.env` automatically; the Vite client reads `frontend/.env`.
+
+Generate a unique Django secret key locally, from `backend/` with the virtual environment active, then paste the output into the ignored root `.env` as `DJANGO_SECRET_KEY`:
+
+```sh
+python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
+```
 
 The backend environment variables are:
 
 | Variable | Purpose | Local example |
 |---|---|---|
 | `DJANGO_DEBUG` | Enables Django debug mode in development | `true` |
-| `DJANGO_SECRET_KEY` | Django signing key; replace the example value for any persistent deployment | `replace-for-local-development` |
+| `DJANGO_SECRET_KEY` | Required Django signing key of at least 32 characters; generate a unique key for each environment | blank in example; generate locally using the command above |
 | `DJANGO_ALLOWED_HOSTS` | Comma-separated allowed host names; required by production settings | `localhost,127.0.0.1` |
-| `DATABASE_URL` | Database connection URL; use PostgreSQL locally | `postgresql://devjobs:devjobs@localhost:5432/devjobs` |
+| `DATABASE_URL` | PostgreSQL connection URL containing your local role, password, host, port, and database | blank in example; set your actual local connection details in `.env` |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated browser origins allowed by CORS | `http://localhost:5173` |
+| `DJANGO_SECURE_SSL_REDIRECT` | In production, redirect HTTP requests to HTTPS | `false` locally |
+| `DJANGO_SECURE_HSTS_SECONDS` | Production HSTS max-age in seconds; start small, then increase after HTTPS is stable | `0` locally |
+| `DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS` | Include all subdomains in HSTS; enable only when every subdomain supports HTTPS | `false` |
+| `DJANGO_SECURE_HSTS_PRELOAD` | Opt into browser preload lists; requires an intentional long-term HTTPS commitment | `false` |
+| `DJANGO_SECURE_PROXY_SSL_HEADER` | Trust `X-Forwarded-Proto: https` from a TLS-terminating proxy | `false` locally |
 
 The frontend uses `VITE_API_BASE_URL` from `frontend/.env` (default: `http://localhost:8000/api/v1`). Vite exposes variables prefixed with `VITE_` to browser code; do not put secrets there.
+
+## Production HTTPS and reverse proxy
+
+Production traffic must use HTTPS from the browser to the trusted edge, and the reverse proxy/load balancer must forward requests to Django over a private, trusted connection. Configure the proxy to overwrite (not append or accept from clients) `X-Forwarded-Proto` with the original scheme. Only then set `DJANGO_SECURE_PROXY_SSL_HEADER=true`; otherwise clients could spoof the scheme signal. Set `DJANGO_SECURE_SSL_REDIRECT=true` to enable Django's HTTP-to-HTTPS redirect after the proxy is configured. Ensure the proxy forwards the original host and configure `DJANGO_ALLOWED_HOSTS` accordingly.
+
+After confirming HTTPS works across the whole domain, set `DJANGO_SECURE_HSTS_SECONDS` to a short initial duration and increase it deliberately. Enable `DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS=true` only if all subdomains support HTTPS. Enable `DJANGO_SECURE_HSTS_PRELOAD=true` only when the domain is ready for the browser preload process and its long-lived consequences. HSTS is emitted only over HTTPS by Django. These controls are configurable in production settings and default to redirect off/HSTS zero so local HTTP development and tests are unaffected. Secure session and CSRF cookies remain enabled in production.
 
 ## Install dependencies
 
@@ -106,46 +125,31 @@ python manage.py makemigrations --check --dry-run
 ruff check .
 ```
 
-The Django test suite uses the configured database. The settings accept PostgreSQL URLs via `dj-database-url` and `psycopg`; with no `DATABASE_URL`, they fall back to SQLite. On 2026-11-05, Python 3.14.4, Django 5.2.19, psycopg and PostgreSQL 18.3 (Homebrew) were used for a live PostgreSQL run. With a local `devjobs` role/database matching `.env.example`, the connection query selected `django.db.backends.postgresql`, reached database `devjobs` as user `devjobs` on `127.0.0.1:5432`, and reported PostgreSQL 18.3. Django system checks, migration consistency, all migrations, 2 backend tests, and Ruff passed against PostgreSQL. The exact commands and hosted CI status are recorded below.
+The Django test suite uses the configured database. The settings accept PostgreSQL URLs via `dj-database-url` and `psycopg`; with no `DATABASE_URL`, they fall back to SQLite. On 2026-11-05, Python 3.14.4, Django 5.2.19, psycopg and PostgreSQL 18.3 (Homebrew) were used for a live PostgreSQL run. Django system checks, migration consistency, all migrations, 2 backend tests, and Ruff passed against PostgreSQL. The exact commands and hosted CI status are recorded below.
 
 ### PostgreSQL and hosted CI verification (2026-11-05)
 
-Docker was not installed. The already-running Homebrew PostgreSQL 18.3 service was used. The local development role and database were created with:
+Docker was not installed. The already-running Homebrew PostgreSQL 18.3 service was used. The local role and database were provisioned for that verification run; credentials are omitted here.
 
-```sh
-/opt/homebrew/opt/postgresql/bin/psql -h 127.0.0.1 -p 5432 -d postgres \
-  -v ON_ERROR_STOP=1 \
-  -c "CREATE ROLE devjobs LOGIN CREATEDB PASSWORD 'devjobs';" \
-  -c 'CREATE DATABASE devjobs OWNER devjobs;'
-```
+The local role/database were provisioned for that verification run; credentials are omitted.
 
 From `backend/`, the same local environment was supplied for each command:
 
 ```sh
-DATABASE_URL='postgresql://devjobs:devjobs@127.0.0.1:5432/devjobs' \
-DJANGO_DEBUG=true DJANGO_SECRET_KEY=replace-for-local-development \
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1 .venv/bin/python manage.py check
+.venv/bin/python manage.py check
 
-DATABASE_URL='postgresql://devjobs:devjobs@127.0.0.1:5432/devjobs' \
-DJANGO_DEBUG=true DJANGO_SECRET_KEY=replace-for-local-development \
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1 .venv/bin/python manage.py makemigrations --check --dry-run
+.venv/bin/python manage.py makemigrations --check --dry-run
 
-DATABASE_URL='postgresql://devjobs:devjobs@127.0.0.1:5432/devjobs' \
-DJANGO_DEBUG=true DJANGO_SECRET_KEY=replace-for-local-development \
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1 .venv/bin/python manage.py migrate --noinput
+.venv/bin/python manage.py migrate --noinput
 
-DATABASE_URL='postgresql://devjobs:devjobs@127.0.0.1:5432/devjobs' \
-DJANGO_DEBUG=true DJANGO_SECRET_KEY=replace-for-local-development \
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1 .venv/bin/python -m pytest
+.venv/bin/python -m pytest
 
-DATABASE_URL='postgresql://devjobs:devjobs@127.0.0.1:5432/devjobs' \
-DJANGO_DEBUG=true DJANGO_SECRET_KEY=replace-for-local-development \
-DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1 .venv/bin/ruff check .
+.venv/bin/ruff check .
 ```
 
-Results in the same order: system check passed with no issues; no model/migration changes detected; all contenttypes, auth, accounts, admin and sessions migrations applied; 2 tests passed; Ruff passed. The separate Django connection query confirmed `DATABASE_URL` is present and parsed to PostgreSQL with the expected host, port, database and user. The local credentials are development placeholders only; do not reuse them outside a local instance.
+Results in the same order: system check passed with no issues; no model/migration changes detected; all contenttypes, auth, accounts, admin and sessions migrations applied; 2 tests passed; Ruff passed. The separate Django connection query confirmed `DATABASE_URL` was present and parsed to PostgreSQL for the local database.
 
-The connection query used the same `DATABASE_URL`, `DJANGO_DEBUG`, `DJANGO_SECRET_KEY`, and `DJANGO_ALLOWED_HOSTS` values above, plus `DJANGO_SETTINGS_MODULE=config.settings.dev`:
+The connection query used the local values in ignored `.env`, plus `DJANGO_SETTINGS_MODULE=config.settings.dev`:
 
 ```sh
 DJANGO_SETTINGS_MODULE=config.settings.dev .venv/bin/python -c "import django; django.setup(); from django.db import connection; cursor=connection.cursor(); cursor.execute('SELECT current_database(), current_user, version()'); print(connection.settings_dict['ENGINE'], connection.settings_dict['HOST'], connection.settings_dict['PORT'], cursor.fetchone())"

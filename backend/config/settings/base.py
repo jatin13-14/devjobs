@@ -2,12 +2,19 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 load_dotenv(BASE_DIR.parent / '.env')
 
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'unsafe-local-only-change-me')
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
+if not SECRET_KEY:
+    raise ImproperlyConfigured(
+        'DJANGO_SECRET_KEY is required. Generate a separate key for each environment.'
+    )
+if len(SECRET_KEY) < 32:
+    raise ImproperlyConfigured('DJANGO_SECRET_KEY must be at least 32 characters long.')
 DEBUG = os.getenv('DJANGO_DEBUG', 'false').lower() == 'true'
 ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 

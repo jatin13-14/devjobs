@@ -39,3 +39,10 @@
 - Against `DATABASE_URL=postgresql://devjobs:devjobs@127.0.0.1:5432/devjobs`, Django selected `django.db.backends.postgresql`; a live query confirmed PostgreSQL 18.3, database/user `devjobs`, and host/port `127.0.0.1:5432`.
 - PostgreSQL-backed verification passed: `manage.py check` (no issues), `makemigrations --check --dry-run` (no changes), `migrate --noinput` (all migrations applied), `python -m pytest` (2 passed), and `ruff check .` (all checks passed). Exact environment and commands are in `docs/LOCAL_DEVELOPMENT.md`.
 - Queried GitHub Actions on 2026-11-05 for `jatin13-14/devjobs`: the API reported zero registered workflows and zero workflow runs. Local HEAD and `origin/main` are both `db9c9d342b9907ed3ad347b4e9a6bd049b6cd94b`; its tree contains no `.github/workflows` files. The workflow files currently exist only as untracked local files. A commit and push, or a pull request containing the workflows, is needed to trigger the configured jobs. No commit or push was made.
+
+## 2026-11-05 — PR #1 authentication and production security review fixes
+- Standardized email identity to a trimmed, case-folded full address at creation, Django authentication lookup, and JWT issuance. Added a data migration that normalizes existing addresses and stops if collisions need manual resolution.
+- Superuser creation now assigns the `admin` product role while preserving and validating Django's built-in staff/superuser flags.
+- Added focused tests for password hashing, email canonicalization and duplicates, case-insensitive authentication, superuser invariants, JWT issuance, and invalid credentials/input.
+- Added configurable production HTTPS redirect, HSTS, and trusted reverse-proxy settings and documented TLS termination, forwarded scheme trust, and safe HSTS rollout.
+- Verification outcomes are recorded in `PROJECT_STATUS.md`. No product profile/company/job features were started; no commit, push, approval, or merge was performed.
