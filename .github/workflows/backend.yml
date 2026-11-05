@@ -32,7 +32,7 @@ jobs:
         working-directory: backend
     env:
       DJANGO_DEBUG: 'false'
-      DJANGO_SECRET_KEY: ci-only-insecure-placeholder
+      DJANGO_SECRET_KEY: ci-only-placeholder-not-a-real-secret-32chars
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
       DATABASE_URL: postgresql://devjobs:devjobs@127.0.0.1:5432/devjobs
     steps:
