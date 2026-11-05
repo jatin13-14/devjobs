@@ -163,7 +163,7 @@ DJANGO_SETTINGS_MODULE=config.settings.dev .venv/bin/python -c "import django; d
 ```
 
 
-Frontend and backend GitHub Actions passed on PR #1 head `fdd9f894c3a194422664168b728f40c9fcc669df`. The backend hosted job uses PostgreSQL 17. PR #1 remains unmerged.
+PR #1 is open and unmerged. Its latest verified head is `d048b1720602bcbe19c78d3725a9c07c900e4ce4`; [backend verification #9](https://github.com/jatin13-14/devjobs/actions/runs/42076673522) and [frontend verification #6](https://github.com/jatin13-14/devjobs/actions/runs/42076673521) both passed on that head. The backend hosted job uses PostgreSQL 17.
 
 Email identity permits ASCII only, removes surrounding ASCII whitespace (`space`, tab, line feed, carriage return, form feed, vertical tab), and lowercases the result. Python normalization, migration preflight, PostgreSQL canonical checks, and the unique expression share that exact whitespace set. The database check requires stored values to already be canonical, so direct database writes cannot create padded identities that collide after application normalization. Migration preflight aborts without changing accounts if existing rows are non-ASCII or collide after normalization.
 `User.save()` validates syntax after normalization. If `update_fields` omits `email` while the in-memory email differs from the stored value, save raises `ValueError`; include `email` to persist the reassignment. Do not use `QuerySet.update()`, `bulk_create()`, or `bulk_update()` to write user emails: Django bulk operations bypass model validation and normalization. No such bulk email write path currently exists in the repository.

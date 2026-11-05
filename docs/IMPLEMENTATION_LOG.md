@@ -51,3 +51,8 @@
 - Current PR #1 head: `ae02cd75182da08a7557289a6d26ede194a710d5`.
 - Backend GitHub Actions run [42062870540](https://github.com/jatin13-14/devjobs/actions/runs/42062870540) passed; frontend run [42062870578](https://github.com/jatin13-14/devjobs/actions/runs/42062870578) passed. Both runs are for the exact head commit above.
 - Earlier entries stating hosted CI was pending or that no commit/push had occurred are retained as records of their earlier snapshots. PR #1 remains unmerged.
+
+## 2026-11-05 — PR #1 latest verified hosted CI
+- Latest verified PR #1 head: `d048b1720602bcbe19c78d3725a9c07c900e4ce4`.
+- Backend verification #9 [42076673522](https://github.com/jatin13-14/devjobs/actions/runs/42076673522) and frontend verification #6 [42076673521](https://github.com/jatin13-14/devjobs/actions/runs/42076673521) both passed on that head.
+- PR #1 is open and unmerged; no approval or merge is recorded. Earlier dated hosted CI entries remain historical records of the heads and run results at those snapshots.

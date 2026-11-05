@@ -1,6 +1,6 @@
 # Project status
 
-**Status:** v0.1.0 foundation and local PostgreSQL verification complete; hosted CI passed for PR #1
+**Status:** v0.1.0 foundation and local PostgreSQL verification complete; PR #1 is open and unmerged, with hosted CI passed on the latest verified head
 **Product version:** 0.1.0 (pre-release planning baseline)  
 **Last updated:** 2026-11-05
 
@@ -25,7 +25,7 @@
 ## Delivery phases
 | Phase | Scope | Status |
 |---|---|---|
-| 0 | Repository, conventions, docs, CI baseline | Local setup and PostgreSQL checks verified; both hosted workflows passed on `fdd9f894c3a194422664168b728f40c9fcc669df` |
+| 0 | Repository, conventions, docs, CI baseline | Local setup and PostgreSQL checks verified; both hosted workflows passed on latest verified PR #1 head `d048b1720602bcbe19c78d3725a9c07c900e4ce4` |
 | 1 | Auth, roles and profiles | Not started |
 | 2 | Companies and recruiter membership | Not started |
 | 3 | Job creation and publishing | Not started |
@@ -39,7 +39,7 @@
 - Email identity is ASCII-only, trimmed, and lowercase; manager authentication, JWT issuance, model saves, and database constraints use the same identity policy. Migration `accounts.0003_canonical_email_constraint` preflights legacy accounts and aborts without changing them if Unicode addresses or canonical duplicates exist.
 - Django superusers use the product `admin` role and retain Django's required `is_staff=True` and `is_superuser=True` invariants. This does not implement role-aware onboarding or other Phase 1 features.
 - Production HTTPS redirect, HSTS, and trusted reverse-proxy scheme handling are environment-configurable and remain disabled by default for redirects/HSTS and in local development. See `docs/LOCAL_DEVELOPMENT.md` for TLS proxy requirements.
-- PR #1 current verified head is `fdd9f894c3a194422664168b728f40c9fcc669df`; backend and frontend GitHub Actions passed on that commit. PR #1 remains unmerged.
+- PR #1 is open and unmerged; no approval or merge is recorded. Its latest verified head is `d048b1720602bcbe19c78d3725a9c07c900e4ce4`. Backend verification #9 [passed](https://github.com/jatin13-14/devjobs/actions/runs/42076673522), and frontend verification #6 [passed](https://github.com/jatin13-14/devjobs/actions/runs/42076673521) on that head.
 
 ### Review-fix verification
 - Backend: `.venv/bin/ruff check .` passed. `ruff format --check` passed for the five changed Python files. A repository-wide formatter check identifies formatting differences in existing untouched files, so those were left unchanged.
@@ -58,7 +58,7 @@ A task is complete only when:
 
 ## Open decisions and verification limits
 - Product name remains provisional.
-- PostgreSQL is configured and was verified locally against PostgreSQL 18.3. The backend hosted workflow uses PostgreSQL 17 and passed on the commit listed above.
+- PostgreSQL is configured and was verified locally against PostgreSQL 18.3. The backend hosted workflow uses PostgreSQL 17 and passed on the latest verified PR #1 head listed above.
 
 ## Foundation verification (2026-11-05)
 The dated verification entries below are historical snapshots; where they describe hosted CI as pending or say no commit/push occurred, the later hosted CI reconciliation at the end of this file supersedes them.
@@ -83,8 +83,8 @@ The dated verification entries below are historical snapshots; where they descri
 - All four original review findings are resolved in the local working tree. No staging, commit, push, approval, or merge occurred.
 
 ## Hosted CI reconciliation (2026-11-05)
-- Latest verified PR #1 head: `fdd9f894c3a194422664168b728f40c9fcc669df`; backend and frontend GitHub Actions passed on that exact commit. The backend workflow uses PostgreSQL 17.
-- The older notes below and above that say workflows were unregistered, hosted runs were pending, or no commit/push had occurred describe earlier snapshots and are retained as historical records. They are superseded by this current state. PR #1 is not merged.
+- At this snapshot, the verified PR #1 head was `fdd9f894c3a194422664168b728f40c9fcc669df`; the later current-state record above supersedes it. The backend workflow uses PostgreSQL 17.
+- The older notes below and above that say workflows were unregistered, hosted runs were pending, or no commit/push had occurred describe earlier snapshots and are retained as historical records. They are superseded by the current state above. PR #1 is open and unmerged.
 
 ## Final review findings (local changes, 2026-11-05)
 - Email identity is ASCII-only, trimmed, and lowercased. `0003` checks legacy rows before adding ASCII/canonical-storage checks and canonical uniqueness; failure leaves account records untouched. Unicode addresses require manual resolution and will not be silently converted or deleted. `save(update_fields=...)` raises if an in-memory email change is omitted from `update_fields`.
