@@ -1,0 +1,21 @@
+:root {
+  --color-brand: #2563eb;
+  --color-brand-dark: #1d4ed8;
+  --color-ink: #101828;
+  --color-muted: #667085;
+  --color-surface: #ffffff;
+  --color-canvas: #f8fafc;
+  --color-border: #e4e7ec;
+  --color-accent-soft: #eff6ff;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --content-width: 1160px;
+}

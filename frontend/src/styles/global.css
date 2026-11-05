@@ -1,0 +1,33 @@
+* { box-sizing: border-box; }
+html { min-width: 320px; background: var(--color-canvas); }
+body { margin: 0; color: var(--color-ink); background: var(--color-canvas); }
+a { color: inherit; text-decoration: none; }
+.container { width: min(var(--content-width), calc(100% - 48px)); margin-inline: auto; }
+.site-header { background: #fff; border-bottom: 1px solid var(--color-border); }
+.nav-content { min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.brand-mark { font-size: 24px; font-weight: 800; letter-spacing: -1.2px; }
+.brand-mark span { color: var(--color-brand); }
+.nav-links, .nav-actions { display: flex; align-items: center; gap: 26px; }
+.nav-links { color: #475467; font-size: 14px; }
+.hero-section { background: radial-gradient(ellipse at 78% 5%, #dbeafe 0, transparent 35%), linear-gradient(135deg, #f8fbff, #eff6ff); padding: 88px 0 78px; }
+.hero-content { text-align: center; }
+.eyebrow { color: var(--color-brand); font-size: 11px; font-weight: 800; letter-spacing: 1.7px; }
+.hero-content h1 { margin: 18px 0; font-size: clamp(42px, 6vw, 68px); line-height: 1.05; letter-spacing: -3px; }
+.hero-content h1 span { color: var(--color-brand); }
+.hero-description { color: var(--color-muted); font-size: 17px; }
+.search-panel { display: grid; grid-template-columns: 1.5fr 1fr auto; gap: 10px; max-width: 850px; margin: 34px auto 0; padding: 10px; background: #fff; border: 1px solid #e6edf7; border-radius: 16px; box-shadow: 0 16px 40px #1d4ed80d; }
+.search-hint { margin-top: 16px; color: var(--color-muted); font-size: 13px; }
+.intro-section { display: flex; align-items: end; justify-content: space-between; gap: 48px; padding-block: 72px; }
+.intro-section h2 { margin: 8px 0 0; font-size: 30px; letter-spacing: -1px; }
+.intro-copy { max-width: 430px; color: var(--color-muted); line-height: 1.7; }
+.site-footer { border-top: 1px solid var(--color-border); padding: 28px 0; color: var(--color-muted); font-size: 13px; background: #fff; }
+@media (max-width: 760px) {
+  .container { width: min(100% - 32px, var(--content-width)); }
+  .nav-content { min-height: 68px; }
+  .nav-links { display: none; }
+  .nav-actions { gap: 4px; }
+  .hero-section { padding: 64px 0 56px; }
+  .hero-content h1 { letter-spacing: -2px; }
+  .search-panel { grid-template-columns: 1fr; }
+  .intro-section { display: block; padding-block: 48px; }
+}
