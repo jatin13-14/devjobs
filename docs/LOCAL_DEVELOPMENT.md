@@ -155,7 +155,8 @@ The connection query used the local values in ignored `.env`, plus `DJANGO_SETTI
 DJANGO_SETTINGS_MODULE=config.settings.dev .venv/bin/python -c "import django; django.setup(); from django.db import connection; cursor=connection.cursor(); cursor.execute('SELECT current_database(), current_user, version()'); print(connection.settings_dict['ENGINE'], connection.settings_dict['HOST'], connection.settings_dict['PORT'], cursor.fetchone())"
 ```
 
-GitHub Actions was queried for `jatin13-14/devjobs` on 2026-11-05. The GitHub API returned `total_count: 0` for both workflow runs and registered workflows. The local HEAD and `origin/main` are both `db9c9d342b9907ed3ad347b4e9a6bd049b6cd94b`; `git ls-tree -r HEAD .github/workflows` returned no files. The frontend and backend workflow definitions currently exist only as untracked local files, so GitHub has no workflow definitions to execute for this commit. To trigger hosted verification, add the workflow files to a commit and push that commit or open/update a pull request targeting `main`; the path filters cover those workflow files. The backend hosted job will run against PostgreSQL 17. No commit or push was performed.
+
+That paragraph records an earlier GitHub snapshot from before the workflows were published; it is superseded by the current result: for PR #1 head `ae02cd75182da08a7557289a6d26ede194a710d5`, backend run [42062870540](https://github.com/jatin13-14/devjobs/actions/runs/42062870540) and frontend run [42062870578](https://github.com/jatin13-14/devjobs/actions/runs/42062870578) both passed. The backend hosted job uses PostgreSQL 17. PR #1 remains unmerged.
 
 The frontend commands above were run on 2026-11-05 with Node.js 24.1.0 / npm 11.3.0: lint passed, 1 Vitest test passed, and the production build passed. Vite reported a 609.25 kB minified JavaScript chunk, above its 500 kB advisory threshold.
 

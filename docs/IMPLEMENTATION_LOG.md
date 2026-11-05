@@ -46,3 +46,8 @@
 - Added focused tests for password hashing, email canonicalization and duplicates, case-insensitive authentication, superuser invariants, JWT issuance, and invalid credentials/input.
 - Added configurable production HTTPS redirect, HSTS, and trusted reverse-proxy settings and documented TLS termination, forwarded scheme trust, and safe HSTS rollout.
 - Verification outcomes are recorded in `PROJECT_STATUS.md`. No product profile/company/job features were started; no commit, push, approval, or merge was performed.
+
+## 2026-11-05 — PR #1 hosted CI result
+- Current PR #1 head: `ae02cd75182da08a7557289a6d26ede194a710d5`.
+- Backend GitHub Actions run [42062870540](https://github.com/jatin13-14/devjobs/actions/runs/42062870540) passed; frontend run [42062870578](https://github.com/jatin13-14/devjobs/actions/runs/42062870578) passed. Both runs are for the exact head commit above.
+- Earlier entries stating hosted CI was pending or that no commit/push had occurred are retained as records of their earlier snapshots. PR #1 remains unmerged.

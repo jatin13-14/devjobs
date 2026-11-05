@@ -31,7 +31,7 @@ Foundation and discovery. No application feature is considered implemented until
 See [local development setup](docs/LOCAL_DEVELOPMENT.md) for prerequisites, PostgreSQL setup, environment variables, dependency installation, startup and verification commands. Do not copy real credentials into source control. Use `.env.example` for local defaults and keep the ignored `.env` file local.
 
 ## Foundation verification
-Frontend and backend verification run in GitHub Actions; the backend workflow uses PostgreSQL 17. Local check commands and the results actually run for this foundation are recorded in [project status](PROJECT_STATUS.md) and [local development](docs/LOCAL_DEVELOPMENT.md). The initial hosted CI run is pending.
+Frontend and backend GitHub Actions passed on PR #1 head `ae02cd75182da08a7557289a6d26ede194a710d5` (backend run [42062870540](https://github.com/jatin13-14/devjobs/actions/runs/42062870540); frontend run [42062870578](https://github.com/jatin13-14/devjobs/actions/runs/42062870578)). The backend workflow uses PostgreSQL 17. See [project status](PROJECT_STATUS.md) and [local development](docs/LOCAL_DEVELOPMENT.md) for local checks and results.
 
 ## Project principles
 1. Ship a secure, coherent MVP before adding AI features.

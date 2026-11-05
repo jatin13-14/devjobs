@@ -1,6 +1,6 @@
 # Project status
 
-**Status:** v0.1.0 foundation and local PostgreSQL verification complete; hosted CI pending workflow publication
+**Status:** v0.1.0 foundation and local PostgreSQL verification complete; hosted CI passed for PR #1
 **Product version:** 0.1.0 (pre-release planning baseline)  
 **Last updated:** 2026-11-05
 
@@ -25,7 +25,7 @@
 ## Delivery phases
 | Phase | Scope | Status |
 |---|---|---|
-| 0 | Repository, conventions, docs, CI baseline | Local setup and PostgreSQL checks verified; workflow files exist locally, hosted CI not yet registered |
+| 0 | Repository, conventions, docs, CI baseline | Local setup and PostgreSQL checks verified; both hosted workflows passed on `ae02cd75182da08a7557289a6d26ede194a710d5` |
 | 1 | Auth, roles and profiles | Not started |
 | 2 | Companies and recruiter membership | Not started |
 | 3 | Job creation and publishing | Not started |
@@ -39,13 +39,13 @@
 - Email addresses are stored trimmed and case-folded in full; manager authentication and JWT issuance normalize inputs with the same policy. Existing account emails are normalized by migration `accounts.0002_normalize_existing_emails`; it aborts before updates if case-insensitive duplicates need manual resolution.
 - Django superusers use the product `admin` role and retain Django's required `is_staff=True` and `is_superuser=True` invariants. This does not implement role-aware onboarding or other Phase 1 features.
 - Production HTTPS redirect, HSTS, and trusted reverse-proxy scheme handling are environment-configurable and remain disabled by default for redirects/HSTS and in local development. See `docs/LOCAL_DEVELOPMENT.md` for TLS proxy requirements.
-- Review findings are implemented locally; requested verification results are recorded after the checks below. PR remains unmerged and no commit/push is made.
+- PR #1 contains the review fixes. The current head is `ae02cd75182da08a7557289a6d26ede194a710d5`; backend and frontend GitHub Actions passed on that commit. PR #1 remains unmerged.
 
 ### Review-fix verification
 - Backend: `.venv/bin/ruff check .` passed. `ruff format --check` passed for the five changed Python files. A repository-wide formatter check identifies formatting differences in existing untouched files, so those were left unchanged.
 - Backend Django check and `makemigrations --check --dry-run` passed. Fresh SQLite verification via `DATABASE_URL='sqlite:///:memory:' .venv/bin/python manage.py migrate --noinput` applied all migrations, including `accounts.0002_normalize_existing_emails`. Pytest passed (8 tests); SimpleJWT emitted a warning because the local development signing key is shorter than 32 bytes.
 - Frontend `npm run lint`, `npm test` (1 test), and `npm run build` passed. Vite retains its existing advisory for the 609.25 kB minified JavaScript chunk.
-- `git diff --check` passed. No commit, push, PR approval, or merge was performed.
+- `git diff --check` passed. This review did not approve or merge PR #1.
 
 ## Definition of done
 A task is complete only when:
@@ -58,10 +58,10 @@ A task is complete only when:
 
 ## Open decisions and verification limits
 - Product name remains provisional.
-- PostgreSQL is configured and was verified locally against PostgreSQL 18.3; the hosted workflow is configured to use PostgreSQL 17 and remains unverified.
-- GitHub reports zero registered workflows and zero workflow runs for the repository. The local workflow files are untracked and absent from the latest `main` commit; publishing them in a push or pull request is required to trigger hosted CI.
+- PostgreSQL is configured and was verified locally against PostgreSQL 18.3. The backend hosted workflow uses PostgreSQL 17 and passed on the commit listed above.
 
 ## Foundation verification (2026-11-05)
+The dated verification entries below are historical snapshots; where they describe hosted CI as pending or say no commit/push occurred, the later hosted CI reconciliation at the end of this file supersedes them.
 - Final local rerun: in `frontend/`, `npm run lint`, `npm test` (1 test), and `npm run build` all passed. Vite 6.4.5 reports a 609.25 kB minified JavaScript chunk, above its 500 kB advisory threshold.
 - Final local rerun: in `backend/`, `.venv/bin/python manage.py check`, `.venv/bin/python manage.py makemigrations --check --dry-run`, `.venv/bin/python -m pytest` (2 tests), and `.venv/bin/ruff check .` all passed under Python 3.14.4 and Django 5.2.19. A fresh in-memory SQLite `migrate --noinput` applied all migrations successfully, including `accounts.0001_initial`.
 - The custom `accounts.User` uses email login and a UUID primary key. Its initial migration exists, matches the model, and applied with all Django migrations on a fresh in-memory SQLite database.
@@ -81,3 +81,7 @@ A task is complete only when:
 - `DJANGO_SECRET_KEY` is now required and must be at least 32 characters. The example leaves it empty; docs say to generate a unique key per environment. Backend checks used a generated disposable runtime key and emitted no SimpleJWT short-key warning.
 - Backend PostgreSQL system checks, migration consistency, Ruff lint, and all 9 tests passed. Frontend lint, its 1 test, and production build passed. Vite still reports its 609.25 kB chunk-size advisory. Ruff formatter checking the touched base settings file reports existing formatting differences; it was not reformatted wholesale.
 - All four original review findings are resolved in the local working tree. No staging, commit, push, approval, or merge occurred.
+
+## Hosted CI reconciliation (2026-11-05)
+- Current GitHub state for PR #1: head `ae02cd75182da08a7557289a6d26ede194a710d5`; backend workflow run [42062870540](https://github.com/jatin13-14/devjobs/actions/runs/42062870540) passed and frontend workflow run [42062870578](https://github.com/jatin13-14/devjobs/actions/runs/42062870578) passed on that exact commit.
+- The older notes below and above that say workflows were unregistered, hosted runs were pending, or no commit/push had occurred describe earlier snapshots and are retained as historical records. They are superseded by this current state. PR #1 is not merged.
