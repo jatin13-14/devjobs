@@ -1,5 +1,8 @@
+from django.db import IntegrityError
 from django.test import TestCase
+
 from .models import User
+
 
 class UserModelTests(TestCase):
     def test_user_uses_email_as_login_identifier(self):
@@ -10,5 +13,5 @@ class UserModelTests(TestCase):
 
     def test_email_is_unique(self):
         User.objects.create_user(email='same@example.com', password='Strong-pass-123')
-        with self.assertRaises(Exception):
+        with self.assertRaises(IntegrityError):
             User.objects.create_user(email='same@example.com', password='Strong-pass-123')

@@ -28,7 +28,10 @@ Foundation and discovery. No application feature is considered implemented until
 - [Decision records](docs/adr/)
 
 ## Local setup
-Setup commands will be added after the repository's actual runtime versions and deployment target are confirmed. Do not copy secrets into source control. Use `.env.example` as the documented variable contract.
+See [local development setup](docs/LOCAL_DEVELOPMENT.md) for prerequisites, PostgreSQL setup, environment variables, dependency installation, startup and verification commands. Do not copy real credentials into source control. Use `.env.example` for local defaults and keep the ignored `.env` file local.
+
+## Foundation verification
+Frontend and backend verification run in GitHub Actions; the backend workflow uses PostgreSQL 17. Local check commands and the results actually run for this foundation are recorded in [project status](PROJECT_STATUS.md) and [local development](docs/LOCAL_DEVELOPMENT.md). The initial hosted CI run is pending.
 
 ## Project principles
 1. Ship a secure, coherent MVP before adding AI features.

@@ -1,8 +1,12 @@
 import os
 from pathlib import Path
+
 import dj_database_url
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parents[2]
+load_dotenv(BASE_DIR.parent / '.env')
+
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'unsafe-local-only-change-me')
 DEBUG = os.getenv('DJANGO_DEBUG', 'false').lower() == 'true'
 ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
