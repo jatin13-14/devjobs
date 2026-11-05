@@ -28,7 +28,10 @@ Foundation and discovery. No application feature is considered implemented until
 - [Decision records](docs/adr/)
 
 ## Local setup
-Setup commands will be added after the repository's actual runtime versions and deployment target are confirmed. Do not copy secrets into source control. Use `.env.example` as the documented variable contract.
+See [local development setup](docs/LOCAL_DEVELOPMENT.md) for prerequisites, PostgreSQL setup, environment variables, dependency installation, startup and verification commands. Do not copy real credentials into source control. Use `.env.example` for local defaults and keep the ignored `.env` file local.
+
+## Foundation verification
+PR #1 is open and unmerged. Its latest verified head is `d048b1720602bcbe19c78d3725a9c07c900e4ce4`; [backend verification #9](https://github.com/jatin13-14/devjobs/actions/runs/42076673522) and [frontend verification #6](https://github.com/jatin13-14/devjobs/actions/runs/42076673521) both passed on that head. See [project status](PROJECT_STATUS.md) and [local development](docs/LOCAL_DEVELOPMENT.md) for local checks and results.
 
 ## Project principles
 1. Ship a secure, coherent MVP before adding AI features.
