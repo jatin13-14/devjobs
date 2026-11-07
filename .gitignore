@@ -32,3 +32,8 @@ media/
 uploads/
 tmp/
 *.log
+private-resumes/
+
+# Local browser test reports can contain synthetic session credentials
+frontend/test-results/
+frontend/playwright-report/
