@@ -21,7 +21,8 @@ it('requires a reason and submits a confirmed decision', async () => {
   fireEvent.change(screen.getByLabelText('Moderation reason'), { target: { value: 'Policy violation' } });
   fireEvent.click(screen.getByRole('button', { name: 'OK' }));
   await waitFor(() => expect(http.post).toHaveBeenCalledWith('/admin/companies/one/', { action: 'suspend', reason: 'Policy violation' }));
-});
+  // Ant Design modal rendering exceeds five seconds on shared hosted runners.
+}, 15000);
 it('displays authorization and API failures', async () => {
   http.get.mockRejectedValue({ response: { data: { detail: 'Permission denied.' } } }); render(<AdminPage />);
   expect(await screen.findByRole('alert')).toHaveTextContent('Permission denied.');

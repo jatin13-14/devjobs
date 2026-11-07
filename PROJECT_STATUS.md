@@ -338,3 +338,18 @@ also triggers on backend requirements changes so all three hosted workflows can
 verify the same remediation SHA. No runtime API or database schema changes.
 Hosted results will be reported after pushing the feature branch; release
 PostgreSQL patch-level and infrastructure/operational gates remain unresolved.
+
+## Hosted CI moderation timeout follow-up — 2026-11-07
+
+Security commit `d9b5a0a27b518bc162f0575dd6edff6e39f3ea0f` pushed successfully.
+Frontend run 42394743060 passed install/audit/lint but its moderation confirmation
+test exceeded the default 5s timeout (42 passed, one timeout). Added a focused
+15s budget preserving every assertion. Backend CI also triggers on moderation UI
+tests to verify server authorization alongside this security-sensitive regression.
+Replacement hosted results are pending; no application behavior/schema changes.
+
+Follow-up local validation: targeted moderation test 3/3 PASS; full `npm test`
+43/43 PASS; `npm run lint` PASS; `npm run build -- --outDir
+/tmp/devjobs-publish-build --emptyOutDir false` PASS (existing chunk advisory).
+Initial test invocation from repository root failed ENOENT; corrected frontend
+invocations above passed. Repeat Python audit and npm audit: zero findings.
