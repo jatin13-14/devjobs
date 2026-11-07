@@ -4,10 +4,12 @@ on:
   push:
     paths:
       - 'frontend/**'
+      - 'backend/requirements/**'
       - '.github/workflows/frontend.yml'
   pull_request:
     paths:
       - 'frontend/**'
+      - 'backend/requirements/**'
       - '.github/workflows/frontend.yml'
 
 jobs:

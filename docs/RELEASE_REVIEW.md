@@ -480,3 +480,56 @@ Working tree: branch `feat/private-candidate-resumes`, **131 paths: 24 modified
 tracked, 107 untracked, zero staged/deleted**. All original 128 preserved. Ready
 for deliberate source consolidation and a hosted CI attempt; hosted success and
 deployment readiness are not claimed.
+
+## Staging assurance follow-up — 2026-11-07
+
+The [staging readiness report](STAGING_READINESS.md) is the current release-security assessment and includes exact commands, audit artifacts, API-contract fixes, explicit gate statuses, infrastructure decisions and smoke-test plan. [Production runbook](PRODUCTION_DEPLOYMENT.md) now includes coordinated backup and isolated restoration steps. Earlier audit omissions and hosted-pending statements are historical: owner reports three passing hosted workflows at `8e5cf77605887b2b5aea72c30376def8130b924c`; no hosted result is claimed for new local changes.
+
+Release remains **BLOCKED** by DRF advisories outside current constraints and unresolved infrastructure/operational evidence; pytest development-only risk remains explicit. pypdf is safely updated to 6.21.4 and local pip to 26.3. Exact installed inventory/advisories are retained in `docs/security/`. No restore test, deployment, provisioning, production migration, secret edit, reset, staging, commit, push or PR #1 change was performed.
+
+Final follow-up checks: semantic OpenAPI **39 paths/55 operations PASS**; backend **134 PASS**, frontend **43 PASS**, Chromium **1 PASS (22.8s)**, lint/build/migration consistency/synthetic deploy check/static dry-run **PASS**, npm advisory audit **zero**, Python audit **7 raw findings remain (FAIL security gate)**. Git whitespace **PASS**; six modified tracked files plus four untracked files, all unstaged, index empty, branch/HEAD unchanged. See staging report for exact path inventory. API runtime behavior/schema unchanged; documentation contract corrected and PDF dependency patched. No restore testing occurred.
+
+
+## Python dependency blockers resolved — 2026-11-07
+
+**Release-security verdict: PASS WITH BLOCKERS.** Python dependency gate PASS;
+remaining PostgreSQL patch-level, infrastructure and operational release gates remain.
+This supersedes earlier DRF/pytest blocker statements. DRF **3.16.1 → 3.18.3**,
+pytest **8.4.2 → 9.0.3**; Django **5.2.19**, SimpleJWT **5.5.1**, pypdf **6.21.4**,
+psycopg/binary **3.3.8**, pytest-django **4.14.0**, Redis client **6.4.0** retained.
+Complete runtime/test transitive closures now have exact pins and SHA-256 artifact
+hashes; clean Python 3.14.4 install and pip check PASS; Python 3.12/3.13 resolution PASS.
+No code/API/schema/authentication change or test fixture adaptation was required.
+
+Resolved IDs: PYSEC-2026-3827, PYSEC-2026-3828, CVE-2026-114136,
+CVE-2026-114137, CVE-2026-114138 (runtime DRF), PYSEC-2026-1845
+(alias CVE-2025-71176, development pytest). Seven prior raw records are six unique
+IDs; pytest was duplicated. pip-audit 2.10.1 over 26 distributions: **zero findings,
+zero skips**, no suppressions. Historical evidence preserved alongside new secure
+inventory, dependency tree, raw audit and count summary in `docs/security/`.
+
+Verification: backend **134 tests + 59 subtests PASS (33.32s)** on guarded PostgreSQL
+17.5; Django check/migration consistency/Ruff PASS; semantic OpenAPI **39 paths /
+55 operations PASS**; frontend **43 tests / 11 files PASS (6.23s)**, lint/build PASS;
+Chromium **1 PASS (23.1s)**; npm audit **zero**. Existing bundle-size advisory and
+JSDOM diagnostics remain. Exact commands, version inventory, compatibility decisions,
+advisory aliases/fixed boundaries and limits are in the Python security resolution
+section of `docs/STAGING_READINESS.md`. Hosted CI for these local changes unverified.
+
+Branch `feat/private-candidate-resumes`, index empty; existing staging-readiness
+work preserved. No .env changes/exposure, database resets, PostgreSQL 14/18 changes,
+production infrastructure changes, deployment or Git publishing actions.
+
+Final dependency-task Git check: 7 modified tracked / 8 untracked files, zero
+staged/deleted; all initial paths preserved; `git diff --check` PASS. Clean-environment
+comparison confirms all 26 installed versions exactly match the audited inventory.
+
+## Security remediation publishing — 2026-11-07
+
+Reviewed all 7 modified tracked and 8 untracked files for the security/staging
+remediation commit. Exact dependency pins and SHA-256 hashes, audit evidence,
+OpenAPI corrections/validator and staging runbooks are included. Frontend CI now
+also triggers on backend requirements changes so all three hosted workflows can
+verify the same remediation SHA. No runtime API or database schema changes.
+Hosted results will be reported after pushing the feature branch; release
+PostgreSQL patch-level and infrastructure/operational gates remain unresolved.

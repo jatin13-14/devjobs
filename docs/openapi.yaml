@@ -6,18 +6,37 @@ info:
 servers:
   - url: /
 paths:
-  /ready/:
+  /api/v1/health/:
     get:
+      operationId: getHealth
+      summary: Dependency-free liveness
+      security: []
+      responses:
+        '200':
+          description: API process responds
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+  /api/v1/ready/:
+    get:
+      operationId: getApiV1Ready
       summary: Aggregate database, cache and private storage readiness
       security: []
       responses:
         '200':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Readiness' }
           description: Required dependencies available
         '503':
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Readiness' }
           description: Required dependency unavailable; no infrastructure details
 
   /api/v1/admin/companies/:
     get:
+      operationId: getApiV1AdminCompanies
       summary: Administrator-only paginated companies; search and state filters
       security: [{ bearerAuth: [] }]
       parameters:
@@ -26,20 +45,30 @@ paths:
         - { in: query, name: page, schema: { type: integer, minimum: 1 } }
         - { in: query, name: page_size, schema: { type: integer, minimum: 1, maximum: 100 } }
       responses:
-        '200': { description: Paginated count/next/previous/results; private administrative records without storage references. }
-        '401': { description: Authentication required. }
-        '403': { description: Trusted active staff/superuser required. }
+        '200':
+          description: Paginated count/next/previous/results; private administrative records without storage references.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminCompanyPage' }
+        '401': { description: "Authentication required." }
+        '403': { description: "Trusted active staff/superuser required." }
   /api/v1/admin/companies/{target_id}/:
     parameters:
       - { in: path, name: target_id, required: true, schema: { type: string, format: uuid } }
     get:
+      operationId: getApiV1AdminCompaniesTargetId
       summary: Inspect companies as platform administrator
       security: [{ bearerAuth: [] }]
       responses:
-        '200': { description: Administrative record; excludes resume keys and credentials. }
-        '403': { description: Platform administrator required. }
-        '404': { description: Target missing. }
+        '200':
+          description: Administrative record; excludes resume keys and credentials.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminCompany' }
+        '403': { description: "Platform administrator required." }
+        '404': { description: "Target missing." }
     post:
+      operationId: postApiV1AdminCompaniesTargetId
       summary: Record an atomic moderation decision for companies
       security: [{ bearerAuth: [] }]
       requestBody:
@@ -54,12 +83,17 @@ paths:
                 action: { type: string, enum: [suspend, reactivate] }
                 reason: { type: string, minLength: 1, maxLength: 2000 }
       responses:
-        '200': { description: Changed record; append-only audit event committed atomically. }
-        '400': { description: Invalid action, reason or already in requested state. }
-        '403': { description: Platform administrator required; privileged accounts cannot be moderated. }
-        '404': { description: Target missing. }
+        '200':
+          description: Changed record; append-only audit event committed atomically.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminCompany' }
+        '400': { description: "Invalid action, reason or already in requested state." }
+        '403': { description: "Platform administrator required; privileged accounts cannot be moderated." }
+        '404': { description: "Target missing." }
   /api/v1/admin/recruiters/:
     get:
+      operationId: getApiV1AdminRecruiters
       summary: Administrator-only paginated recruiters; search and state filters
       security: [{ bearerAuth: [] }]
       parameters:
@@ -68,20 +102,30 @@ paths:
         - { in: query, name: page, schema: { type: integer, minimum: 1 } }
         - { in: query, name: page_size, schema: { type: integer, minimum: 1, maximum: 100 } }
       responses:
-        '200': { description: Paginated count/next/previous/results; private administrative records without storage references. }
-        '401': { description: Authentication required. }
-        '403': { description: Trusted active staff/superuser required. }
+        '200':
+          description: Paginated count/next/previous/results; private administrative records without storage references.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUserPage' }
+        '401': { description: "Authentication required." }
+        '403': { description: "Trusted active staff/superuser required." }
   /api/v1/admin/recruiters/{target_id}/:
     parameters:
       - { in: path, name: target_id, required: true, schema: { type: string, format: uuid } }
     get:
+      operationId: getApiV1AdminRecruitersTargetId
       summary: Inspect recruiters as platform administrator
       security: [{ bearerAuth: [] }]
       responses:
-        '200': { description: Administrative record; excludes resume keys and credentials. }
-        '403': { description: Platform administrator required. }
-        '404': { description: Target missing. }
+        '200':
+          description: Administrative record; excludes resume keys and credentials.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUser' }
+        '403': { description: "Platform administrator required." }
+        '404': { description: "Target missing." }
     post:
+      operationId: postApiV1AdminRecruitersTargetId
       summary: Record an atomic moderation decision for recruiters
       security: [{ bearerAuth: [] }]
       requestBody:
@@ -96,12 +140,17 @@ paths:
                 action: { type: string, enum: [suspend, reactivate] }
                 reason: { type: string, minLength: 1, maxLength: 2000 }
       responses:
-        '200': { description: Changed record; append-only audit event committed atomically. }
-        '400': { description: Invalid action, reason or already in requested state. }
-        '403': { description: Platform administrator required; privileged accounts cannot be moderated. }
-        '404': { description: Target missing. }
+        '200':
+          description: Changed record; append-only audit event committed atomically.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUser' }
+        '400': { description: "Invalid action, reason or already in requested state." }
+        '403': { description: "Platform administrator required; privileged accounts cannot be moderated." }
+        '404': { description: "Target missing." }
   /api/v1/admin/candidates/:
     get:
+      operationId: getApiV1AdminCandidates
       summary: Administrator-only paginated candidates; search and state filters
       security: [{ bearerAuth: [] }]
       parameters:
@@ -110,20 +159,30 @@ paths:
         - { in: query, name: page, schema: { type: integer, minimum: 1 } }
         - { in: query, name: page_size, schema: { type: integer, minimum: 1, maximum: 100 } }
       responses:
-        '200': { description: Paginated count/next/previous/results; private administrative records without storage references. }
-        '401': { description: Authentication required. }
-        '403': { description: Trusted active staff/superuser required. }
+        '200':
+          description: Paginated count/next/previous/results; private administrative records without storage references.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUserPage' }
+        '401': { description: "Authentication required." }
+        '403': { description: "Trusted active staff/superuser required." }
   /api/v1/admin/candidates/{target_id}/:
     parameters:
       - { in: path, name: target_id, required: true, schema: { type: string, format: uuid } }
     get:
+      operationId: getApiV1AdminCandidatesTargetId
       summary: Inspect candidates as platform administrator
       security: [{ bearerAuth: [] }]
       responses:
-        '200': { description: Administrative record; excludes resume keys and credentials. }
-        '403': { description: Platform administrator required. }
-        '404': { description: Target missing. }
+        '200':
+          description: Administrative record; excludes resume keys and credentials.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUser' }
+        '403': { description: "Platform administrator required." }
+        '404': { description: "Target missing." }
     post:
+      operationId: postApiV1AdminCandidatesTargetId
       summary: Record an atomic moderation decision for candidates
       security: [{ bearerAuth: [] }]
       requestBody:
@@ -138,12 +197,17 @@ paths:
                 action: { type: string, enum: [suspend, reactivate] }
                 reason: { type: string, minLength: 1, maxLength: 2000 }
       responses:
-        '200': { description: Changed record; append-only audit event committed atomically. }
-        '400': { description: Invalid action, reason or already in requested state. }
-        '403': { description: Platform administrator required; privileged accounts cannot be moderated. }
-        '404': { description: Target missing. }
+        '200':
+          description: Changed record; append-only audit event committed atomically.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUser' }
+        '400': { description: "Invalid action, reason or already in requested state." }
+        '403': { description: "Platform administrator required; privileged accounts cannot be moderated." }
+        '404': { description: "Target missing." }
   /api/v1/admin/jobs/:
     get:
+      operationId: getApiV1AdminJobs
       summary: Administrator-only paginated jobs; search and state filters
       security: [{ bearerAuth: [] }]
       parameters:
@@ -152,20 +216,30 @@ paths:
         - { in: query, name: page, schema: { type: integer, minimum: 1 } }
         - { in: query, name: page_size, schema: { type: integer, minimum: 1, maximum: 100 } }
       responses:
-        '200': { description: Paginated count/next/previous/results; private administrative records without storage references. }
-        '401': { description: Authentication required. }
-        '403': { description: Trusted active staff/superuser required. }
+        '200':
+          description: Paginated count/next/previous/results; private administrative records without storage references.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminJobPage' }
+        '401': { description: "Authentication required." }
+        '403': { description: "Trusted active staff/superuser required." }
   /api/v1/admin/jobs/{target_id}/:
     parameters:
       - { in: path, name: target_id, required: true, schema: { type: string, format: uuid } }
     get:
+      operationId: getApiV1AdminJobsTargetId
       summary: Inspect jobs as platform administrator
       security: [{ bearerAuth: [] }]
       responses:
-        '200': { description: Administrative record; excludes resume keys and credentials. }
-        '403': { description: Platform administrator required. }
-        '404': { description: Target missing. }
+        '200':
+          description: Administrative record; excludes resume keys and credentials.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminJob' }
+        '403': { description: "Platform administrator required." }
+        '404': { description: "Target missing." }
     post:
+      operationId: postApiV1AdminJobsTargetId
       summary: Record an atomic moderation decision for jobs
       security: [{ bearerAuth: [] }]
       requestBody:
@@ -180,24 +254,38 @@ paths:
                 action: { type: string, enum: [hide, restore] }
                 reason: { type: string, minLength: 1, maxLength: 2000 }
       responses:
-        '200': { description: Changed record; append-only audit event committed atomically. }
-        '400': { description: Invalid action, reason or already in requested state. }
-        '403': { description: Platform administrator required; privileged accounts cannot be moderated. }
-        '404': { description: Target missing. }
+        '200':
+          description: Changed record; append-only audit event committed atomically.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminJob' }
+        '400': { description: "Invalid action, reason or already in requested state." }
+        '403': { description: "Platform administrator required; privileged accounts cannot be moderated." }
+        '404': { description: "Target missing." }
   /api/v1/admin/overview/:
     get:
+      operationId: getApiV1AdminOverview
       summary: Resource counts
       security: [{ bearerAuth: [] }]
       responses:
-        '200': { description: Resource counts. }
-        '403': { description: Platform administrator required. }
+        '200':
+          description: Resource counts.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminOverview' }
+        '403': { description: "Platform administrator required." }
   /api/v1/admin/history/:
     get:
+      operationId: getApiV1AdminHistory
       summary: Paginated immutable audit events; target_type, target_id and action filters
       security: [{ bearerAuth: [] }]
       responses:
-        '200': { description: Paginated immutable audit events; target_type, target_id and action filters. }
-        '403': { description: Platform administrator required. }
+        '200':
+          description: Paginated immutable audit events; target_type, target_id and action filters.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ModerationEventPage' }
+        '403': { description: "Platform administrator required." }
   /api/v1/candidates/me/resume/:
     get:
       summary: Read own resume metadata (resume is null when absent)
@@ -209,9 +297,9 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ResumeStatus' }
-        '401': { description: Authentication required. }
-        '403': { description: Candidate account required. }
-        '404': { description: Candidate profile missing. }
+        '401': { description: "Authentication required." }
+        '403': { description: "Candidate account required." }
+        '404': { description: "Candidate profile missing." }
     put:
       summary: Upload or atomically replace own current resume
       operationId: replaceCandidateResume
@@ -234,21 +322,21 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ResumeStatus' }
         '400': { $ref: '#/components/responses/ValidationError' }
-        '401': { description: Authentication required. }
-        '403': { description: Candidate account required. }
-        '404': { description: Candidate profile missing. }
-        '415': { description: multipart/form-data required. }
-        '503': { description: Storage or database operation failed; previous resume retained. }
+        '401': { description: "Authentication required." }
+        '403': { description: "Candidate account required." }
+        '404': { description: "Candidate profile missing." }
+        '415': { description: "multipart/form-data required." }
+        '503': { description: "Storage or database operation failed; previous resume retained." }
     delete:
       summary: Idempotently delete own resume and revoke future downloads
       operationId: deleteCandidateResume
       security: [{ bearerAuth: [] }]
       responses:
-        '204': { description: Resume absent; file cleanup runs after commit. }
-        '401': { description: Authentication required. }
-        '403': { description: Candidate account required. }
-        '404': { description: Candidate profile missing. }
-        '503': { description: Database operation failed. }
+        '204': { description: "Resume absent; file cleanup runs after commit." }
+        '401': { description: "Authentication required." }
+        '403': { description: "Candidate account required." }
+        '404': { description: "Candidate profile missing." }
+        '503': { description: "Database operation failed." }
   /api/v1/candidates/me/resume/download/:
     get:
       summary: Download own current resume
@@ -256,9 +344,9 @@ paths:
       security: [{ bearerAuth: [] }]
       responses:
         '200': { $ref: '#/components/responses/ResumeDownload' }
-        '401': { description: Authentication required. }
-        '403': { description: Candidate account required. }
-        '404': { description: Resume unavailable. }
+        '401': { description: "Authentication required." }
+        '403': { description: "Candidate account required." }
+        '404': { description: "Resume unavailable." }
   /api/v1/jobs/{job_id}/applications/{application_id}/resume/:
     parameters:
       - { in: path, name: job_id, required: true, schema: { type: string, format: uuid } }
@@ -270,9 +358,9 @@ paths:
       description: Active recruiter and active OWNER/ADMIN membership for the job company required on every request. Withdrawn applications and inactive candidates are denied. Closed/expired jobs and rejected applications retain access. No application snapshot is stored.
       responses:
         '200': { $ref: '#/components/responses/ResumeDownload' }
-        '401': { description: Authentication required. }
-        '403': { description: Active company OWNER/ADMIN required. }
-        '404': { description: Job/application missing, application belongs to another job, withdrawn application, inactive candidate or missing resume. }
+        '401': { description: "Authentication required." }
+        '403': { description: "Active company OWNER/ADMIN required." }
+        '404': { description: "Job/application missing, application belongs to another job, withdrawn application, inactive candidate or missing resume." }
   /api/v1/companies/:
     post:
       summary: Create a company and become its first active owner
@@ -295,8 +383,8 @@ paths:
                   company: { $ref: '#/components/schemas/Company' }
                   membership: { $ref: '#/components/schemas/CompanyMembership' }
         '400': { $ref: '#/components/responses/ValidationError' }
-        '401': { description: Authentication required. }
-        '403': { description: Recruiter account required. }
+        '401': { description: "Authentication required." }
+        '403': { description: "Recruiter account required." }
   /api/v1/companies/{company_id}/:
     parameters:
       - in: path
@@ -304,6 +392,7 @@ paths:
         required: true
         schema: { type: string, format: uuid }
     get:
+      security: []
       summary: Read public company information
       operationId: getCompany
       responses:
@@ -312,7 +401,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Company' }
-        '404': { description: Company not found. }
+        '404': { description: "Company not found." }
     patch:
       summary: Update company information
       operationId: updateCompany
@@ -321,12 +410,16 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CompanyInput' }
+            schema: { $ref: '#/components/schemas/CompanyUpdate' }
       responses:
-        '200': { description: Updated company information. }
+        '200':
+          description: Updated company information.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Company' }
         '400': { $ref: '#/components/responses/ValidationError' }
-        '401': { description: Authentication required. }
-        '403': { description: Active owner or admin membership required. }
+        '401': { description: "Authentication required." }
+        '403': { description: "Active owner or admin membership required." }
   /api/v1/companies/{company_id}/members/:
     parameters:
       - in: path
@@ -345,7 +438,7 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/CompanyMembership' }
-        '403': { description: Active owner or admin membership required. }
+        '403': { description: "Active owner or admin membership required." }
     post:
       summary: Add or invite a recruiter to a company
       operationId: addCompanyMember
@@ -356,9 +449,13 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/CompanyMembershipInput' }
       responses:
-        '201': { description: Membership created. }
+        '201':
+          description: Membership created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyMembership' }
         '400': { $ref: '#/components/responses/ValidationError' }
-        '403': { description: Active owner or admin membership required. }
+        '403': { description: "Active owner or admin membership required." }
   /api/v1/companies/{company_id}/members/{membership_id}/:
     parameters:
       - in: path
@@ -379,21 +476,26 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/CompanyMembershipUpdate' }
       responses:
-        '200': { description: Updated membership. }
+        '200':
+          description: Updated membership.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyMembership' }
         '400': { $ref: '#/components/responses/ValidationError' }
-        '403': { description: Active owner or admin membership required. }
-        '404': { description: Membership does not belong to this company. }
+        '403': { description: "Active owner or admin membership required." }
+        '404': { description: "Membership does not belong to this company." }
     delete:
       summary: Remove a non-owner membership
       operationId: removeCompanyMember
       security: [{ bearerAuth: [] }]
       responses:
-        '204': { description: Membership removed. }
-        '400': { description: The active owner must transfer ownership first. }
-        '403': { description: Active owner or admin membership required. }
-        '404': { description: Membership does not belong to this company. }
+        '204': { description: "Membership removed." }
+        '400': { description: "The active owner must transfer ownership first." }
+        '403': { description: "Active owner or admin membership required." }
+        '404': { description: "Membership does not belong to this company." }
   /api/v1/auth/candidate/register/:
     post:
+      security: []
       summary: Register a candidate
       operationId: registerCandidate
       requestBody:
@@ -413,6 +515,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/auth/recruiter/register/:
     post:
+      security: []
       summary: Register a recruiter
       operationId: registerRecruiter
       requestBody:
@@ -432,6 +535,7 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /api/v1/auth/login/:
     post:
+      security: []
       summary: Obtain JWTs using email and password
       operationId: login
       requestBody:
@@ -453,6 +557,7 @@ paths:
           description: Token issuance rate limit exceeded.
   /api/v1/auth/token/:
     post:
+      security: []
       summary: Compatibility route for login
       operationId: obtainTokenPair
       requestBody:
@@ -474,6 +579,7 @@ paths:
           description: Token issuance rate limit exceeded.
   /api/v1/auth/token/refresh/:
     post:
+      security: []
       summary: Refresh an access token
       operationId: refreshToken
       requestBody:
@@ -515,8 +621,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CandidateProfile'
-        '401': { description: Authentication required. }
-        '403': { description: Candidate role required. }
+        '401': { description: "Authentication required." }
+        '403': { description: "Candidate role required." }
     patch:
       summary: Partially update the authenticated candidate profile
       operationId: patchCandidateProfile
@@ -535,8 +641,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/CandidateProfile'
         '400': { $ref: '#/components/responses/ValidationError' }
-        '401': { description: Authentication required. }
-        '403': { description: Candidate role required. }
+        '401': { description: "Authentication required." }
+        '403': { description: "Candidate role required." }
   /api/v1/candidates/me/skills/:
     get:
       summary: List the authenticated candidate skills
@@ -550,8 +656,8 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Skill' }
-        '401': { description: Authentication required. }
-        '403': { description: Candidate role required. }
+        '401': { description: "Authentication required." }
+        '403': { description: "Candidate role required." }
     post:
       summary: Add a skill to the authenticated candidate
       operationId: addCandidateSkill
@@ -577,8 +683,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Skill' }
         '400': { $ref: '#/components/responses/ValidationError' }
-        '401': { description: Authentication required. }
-        '403': { description: Candidate role required. }
+        '401': { description: "Authentication required." }
+        '403': { description: "Candidate role required." }
   /api/v1/candidates/me/skills/{skill_id}/:
     delete:
       summary: Remove a skill from the authenticated candidate
@@ -590,10 +696,10 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        '204': { description: Association removed. }
-        '401': { description: Authentication required. }
-        '403': { description: Candidate role required. }
-        '404': { description: Association not found for this candidate. }
+        '204': { description: "Association removed." }
+        '401': { description: "Authentication required." }
+        '403': { description: "Candidate role required." }
+        '404': { description: "Association not found for this candidate." }
   /api/v1/recruiters/me/profile/:
     get:
       summary: Read the authenticated recruiter profile
@@ -605,8 +711,8 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RecruiterProfile' }
-        '401': { description: Authentication required. }
-        '403': { description: Recruiter role required. }
+        '401': { description: "Authentication required." }
+        '403': { description: "Recruiter role required." }
     patch:
       summary: Partially update the authenticated recruiter profile
       operationId: patchRecruiterProfile
@@ -623,8 +729,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RecruiterProfile' }
         '400': { $ref: '#/components/responses/ValidationError' }
-        '401': { description: Authentication required. }
-        '403': { description: Recruiter role required. }
+        '401': { description: "Authentication required." }
+        '403': { description: "Recruiter role required." }
   /api/v1/recruiters/me/companies/:
     get:
       summary: List active company memberships for the authenticated recruiter
@@ -645,10 +751,11 @@ paths:
                     name: { type: string }
                     membership_id: { type: string, format: uuid }
                     role: { type: string, enum: [OWNER, ADMIN, MEMBER] }
-        '401': { description: Authentication required. }
-        '403': { description: Recruiter role required. }
+        '401': { description: "Authentication required." }
+        '403': { description: "Recruiter role required." }
   /api/v1/jobs/:
     get:
+      security: []
       summary: Search published, non-expired jobs
       operationId: listJobs
       parameters:
@@ -663,7 +770,11 @@ paths:
         - { in: query, name: page, schema: { type: integer, minimum: 1 } }
         - { in: query, name: page_size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
       responses:
-        '200': { description: Paginated public jobs. }
+        '200':
+          description: Paginated public jobs.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobPage' }
     post:
       summary: Create a draft job
       operationId: createJob
@@ -674,18 +785,27 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/JobInput' }
       responses:
-        '201': { description: Draft created. }
+        '201':
+          description: Draft created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Job' }
         '400': { $ref: '#/components/responses/ValidationError' }
-        '403': { description: Active recruiter OWNER or ADMIN membership required. }
+        '403': { description: "Active recruiter OWNER or ADMIN membership required." }
   /api/v1/jobs/{job_id}/:
     parameters:
       - { in: path, name: job_id, required: true, schema: { type: string, format: uuid } }
     get:
+      security: []
       summary: Read public job details
       operationId: getJob
       responses:
-        '200': { description: Published, non-expired job details. }
-        '404': { description: Missing, draft, closed, or expired job. }
+        '200':
+          description: Published, non-expired job details.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Job' }
+        '404': { description: "Missing, draft, closed, or expired job." }
     patch:
       summary: Update an authorized company's job
       operationId: updateJob
@@ -694,10 +814,14 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/JobInput' }
+            schema: { $ref: '#/components/schemas/JobUpdate' }
       responses:
-        '200': { description: Updated job. }
-        '403': { description: Active company OWNER or ADMIN membership required. }
+        '200':
+          description: Updated job.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Job' }
+        '403': { description: "Active company OWNER or ADMIN membership required." }
   /api/v1/jobs/{job_id}/publish/:
     post:
       summary: Publish a draft job
@@ -706,9 +830,13 @@ paths:
       parameters:
         - { in: path, name: job_id, required: true, schema: { type: string, format: uuid } }
       responses:
-        '200': { description: Published job. }
-        '400': { description: Closed jobs cannot be republished. }
-        '403': { description: Active company OWNER or ADMIN membership required. }
+        '200':
+          description: Published job.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Job' }
+        '400': { description: "Closed jobs cannot be republished." }
+        '403': { description: "Active company OWNER or ADMIN membership required." }
   /api/v1/jobs/{job_id}/close/:
     post:
       summary: Close a job
@@ -717,10 +845,15 @@ paths:
       parameters:
         - { in: path, name: job_id, required: true, schema: { type: string, format: uuid } }
       responses:
-        '200': { description: Closed job. }
-        '403': { description: Active company OWNER or ADMIN membership required. }
+        '200':
+          description: Closed job.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Job' }
+        '403': { description: "Active company OWNER or ADMIN membership required." }
   /api/v1/companies/{company_id}/jobs/:
     get:
+      security: []
       summary: List visible jobs for a company
       operationId: listCompanyJobs
       parameters:
@@ -732,8 +865,12 @@ paths:
         - { in: query, name: page, schema: { type: integer, minimum: 1 } }
         - { in: query, name: page_size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
       responses:
-        '200': { description: OWNER/ADMIN members see drafts; other callers see public jobs. }
-        '404': { description: Company not found. }
+        '200':
+          description: OWNER/ADMIN members see drafts; other callers see public jobs.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/JobPage' }
+        '404': { description: "Company not found." }
   /api/v1/jobs/{job_id}/applications/:
     parameters:
       - { in: path, name: job_id, required: true, schema: { type: string, format: uuid } }
@@ -746,9 +883,13 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/ApplicationInput' }
       responses:
-        '201': { description: Application submitted. }
+        '201':
+          description: Application submitted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Application' }
         '400': { $ref: '#/components/responses/ValidationError' }
-        '403': { description: Candidate profile required. }
+        '403': { description: "Candidate profile required." }
     get:
       summary: List applicants for a job
       operationId: listJobApplicants
@@ -757,8 +898,12 @@ paths:
         - { in: query, name: page, schema: { type: integer, minimum: 1 } }
         - { in: query, name: page_size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
       responses:
-        '200': { description: Paginated applications with an additive resume_available boolean; requires active company OWNER or ADMIN membership. }
-        '403': { description: Active company OWNER or ADMIN membership required. }
+        '200':
+          description: Paginated applications with an additive resume_available boolean; requires active company OWNER or ADMIN membership.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplicationPage' }
+        '403': { description: "Active company OWNER or ADMIN membership required." }
   /api/v1/jobs/{job_id}/applications/{application_id}/:
     parameters:
       - { in: path, name: job_id, required: true, schema: { type: string, format: uuid } }
@@ -768,9 +913,13 @@ paths:
       operationId: getJobApplicant
       security: [{ bearerAuth: [] }]
       responses:
-        '200': { description: Applicant details with limited candidate profile fields and an additive resume_available boolean (false when withdrawn, inactive candidate or resume absent). }
-        '403': { description: Active company OWNER or ADMIN membership required. }
-        '404': { description: Job or job application not found. }
+        '200':
+          description: Applicant details with limited candidate profile fields and an additive resume_available boolean (false when withdrawn, inactive candidate or resume absent).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Application' }
+        '403': { description: "Active company OWNER or ADMIN membership required." }
+        '404': { description: "Job or job application not found." }
   /api/v1/jobs/{job_id}/applications/{application_id}/status/:
     parameters:
       - { in: path, name: job_id, required: true, schema: { type: string, format: uuid } }
@@ -785,10 +934,14 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/ApplicationStatusUpdate' }
       responses:
-        '200': { description: Status updated and recorded in history. }
+        '200':
+          description: Status updated and recorded in history.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Application' }
         '400': { $ref: '#/components/responses/ValidationError' }
-        '403': { description: Active company OWNER or ADMIN membership required. }
-        '404': { description: Job or job application not found. }
+        '403': { description: "Active company OWNER or ADMIN membership required." }
+        '404': { description: "Job or job application not found." }
   /api/v1/candidates/me/applications/:
     get:
       summary: List the authenticated candidate's applications
@@ -798,8 +951,12 @@ paths:
         - { in: query, name: page, schema: { type: integer, minimum: 1 } }
         - { in: query, name: page_size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
       responses:
-        '200': { description: Paginated applications belonging to the authenticated candidate, including resume_available. }
-        '403': { description: Candidate profile required. }
+        '200':
+          description: Paginated applications belonging to the authenticated candidate, including resume_available.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplicationPage' }
+        '403': { description: "Candidate profile required." }
   /api/v1/candidates/me/applications/{application_id}/:
     parameters:
       - { in: path, name: application_id, required: true, schema: { type: string, format: uuid } }
@@ -808,8 +965,12 @@ paths:
       operationId: getMyApplication
       security: [{ bearerAuth: [] }]
       responses:
-        '200': { description: Candidate-owned application including resume_available. }
-        '404': { description: Application not found. }
+        '200':
+          description: Candidate-owned application including resume_available.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Application' }
+        '404': { description: "Application not found." }
     patch:
       summary: Withdraw an eligible application using an empty object
       operationId: withdrawMyApplication
@@ -820,11 +981,458 @@ paths:
           application/json:
             schema: { type: object, additionalProperties: false }
       responses:
-        '200': { description: Application withdrawn. }
+        '200':
+          description: Application withdrawn.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Application' }
         '400': { $ref: '#/components/responses/ValidationError' }
-        '404': { description: Application not found. }
+        '404': { description: "Application not found." }
 components:
   schemas:
+    CompanyUpdate:
+      type: object
+      required: []
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        website:
+          anyOf:
+            - { type: string, format: uri }
+            - { const: '' }
+        description:
+          type: string
+        industry:
+          type: string
+          maxLength: 100
+        company_size:
+          type: string
+          maxLength: 30
+        headquarters_country:
+          type: string
+          maxLength: 2
+          example: IN
+        headquarters_city:
+          type: string
+          maxLength: 100
+    JobUpdate:
+      type: object
+      required: []
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 20000
+        employment_type:
+          type: string
+          enum:
+          - FULL_TIME
+          - PART_TIME
+          - CONTRACT
+          - TEMPORARY
+          - INTERNSHIP
+        workplace_type:
+          type: string
+          enum:
+          - REMOTE
+          - HYBRID
+          - ON_SITE
+        location:
+          type: string
+          maxLength: 160
+        country:
+          type: string
+          pattern: '^([A-Z]{2})?$'
+        experience_level:
+          type: string
+          enum:
+          - ENTRY
+          - MID
+          - SENIOR
+          - LEAD
+        skills:
+          type: array
+          items:
+            type: string
+            maxLength: 80
+        salary_min:
+          type: [number, string, 'null']
+        salary_max:
+          type: [number, string, 'null']
+        salary_currency:
+          type: string
+          pattern: '^([A-Z]{3})?$'
+        application_deadline:
+          type: [string, 'null']
+          format: date
+    Health:
+      type: object
+      required:
+      - status
+      - service
+      properties:
+        status:
+          const: ok
+        service:
+          const: devjobs-api
+    Readiness:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          enum:
+          - ready
+          - unavailable
+    AdminCompany:
+      type: object
+      required:
+      - id
+      - name
+      - description
+      - website
+      - is_suspended
+      - created_at
+      properties:
+        id: &id002
+          type: string
+          format: uuid
+        name: &id001
+          type: string
+        description: *id001
+        website: *id001
+        is_suspended: &id003
+          type: boolean
+        created_at: &id004
+          type: string
+          format: date-time
+    AdminJob:
+      type: object
+      required:
+      - id
+      - title
+      - description
+      - status
+      - is_hidden
+      - company
+      - created_at
+      properties:
+        id: *id002
+        title: *id001
+        description: *id001
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - PUBLISHED
+          - CLOSED
+        is_hidden: *id003
+        company: *id001
+        created_at: *id004
+    AdminUser:
+      type: object
+      required:
+      - id
+      - email
+      - role
+      - is_active
+      - name
+      - created_at
+      properties:
+        id: *id002
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+          - candidate
+          - recruiter
+        is_active: *id003
+        name: *id001
+        created_at: *id004
+    AdminOverview:
+      type: object
+      required:
+      - companies
+      - recruiters
+      - candidates
+      - jobs
+      properties:
+        companies:
+          type: integer
+          minimum: 0
+        recruiters:
+          type: integer
+          minimum: 0
+        candidates:
+          type: integer
+          minimum: 0
+        jobs:
+          type: integer
+          minimum: 0
+    ModerationEvent:
+      type: object
+      required:
+      - id
+      - administrator
+      - target_type
+      - target_id
+      - action
+      - reason
+      - previous_state
+      - new_state
+      - created_at
+      properties:
+        id: *id002
+        administrator: *id002
+        target_type:
+          type: string
+          enum:
+          - users
+          - companies
+          - jobs
+        target_id: *id002
+        action:
+          type: string
+          enum:
+          - suspend
+          - reactivate
+          - hide
+          - restore
+        reason: *id001
+        previous_state: *id003
+        new_state: *id003
+        created_at: *id004
+    Application:
+      type: object
+      required:
+      - id
+      - job
+      - candidate
+      - status
+      - cover_letter
+      - applied_at
+      - updated_at
+      - withdrawn_at
+      - resume_available
+      properties:
+        id: *id002
+        job:
+          type: object
+          required:
+          - id
+          - title
+          - company
+          properties:
+            id: *id002
+            title: *id001
+            company: *id001
+        candidate:
+          type: object
+          required:
+          - full_name
+          - professional_headline
+          - country
+          - city
+          - years_of_experience
+          - current_designation
+          - skills
+          properties:
+            full_name:
+              type: string
+              maxLength: 160
+            professional_headline:
+              type: string
+              maxLength: 200
+            country:
+              type: string
+              maxLength: 2
+              example: IN
+            city:
+              type: string
+              maxLength: 100
+            years_of_experience:
+              type: integer
+              minimum: 0
+              maximum: 80
+            current_designation:
+              type: string
+              maxLength: 160
+            skills:
+              type: array
+              items: *id001
+        status:
+          type: string
+          enum:
+          - SUBMITTED
+          - REVIEWING
+          - SHORTLISTED
+          - REJECTED
+          - WITHDRAWN
+        cover_letter: *id001
+        applied_at: *id004
+        updated_at: *id004
+        withdrawn_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        resume_available: *id003
+    AdminCompanyPage:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+          format: uri
+        previous:
+          type:
+          - string
+          - 'null'
+          format: uri
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminCompany'
+    AdminJobPage:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+          format: uri
+        previous:
+          type:
+          - string
+          - 'null'
+          format: uri
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminJob'
+    AdminUserPage:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+          format: uri
+        previous:
+          type:
+          - string
+          - 'null'
+          format: uri
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminUser'
+    ModerationEventPage:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+          format: uri
+        previous:
+          type:
+          - string
+          - 'null'
+          format: uri
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModerationEvent'
+    JobPage:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+          format: uri
+        previous:
+          type:
+          - string
+          - 'null'
+          format: uri
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Job'
+    ApplicationPage:
+      type: object
+      required:
+      - count
+      - next
+      - previous
+      - results
+      properties:
+        count:
+          type: integer
+          minimum: 0
+        next:
+          type:
+          - string
+          - 'null'
+          format: uri
+        previous:
+          type:
+          - string
+          - 'null'
+          format: uri
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Application'
     ResumeStatus:
       type: object
       required: [resume]
@@ -864,13 +1472,13 @@ components:
         employment_type: { type: string, enum: [FULL_TIME, PART_TIME, CONTRACT, TEMPORARY, INTERNSHIP] }
         workplace_type: { type: string, enum: [REMOTE, HYBRID, ON_SITE] }
         location: { type: string, maxLength: 160 }
-        country: { type: string, pattern: '^[A-Z]{2}$' }
+        country: { type: string, pattern: '^([A-Z]{2})?$' }
         experience_level: { type: string, enum: [ENTRY, MID, SENIOR, LEAD] }
         skills: { type: array, items: { type: string, maxLength: 80 } }
-        salary_min: { type: number, minimum: 0 }
-        salary_max: { type: number, minimum: 0 }
-        salary_currency: { type: string, pattern: '^[A-Z]{3}$' }
-        application_deadline: { type: string, format: date }
+        salary_min: { type: [number, string, 'null'] }
+        salary_max: { type: [number, string, 'null'] }
+        salary_currency: { type: string, pattern: '^([A-Z]{3})?$' }
+        application_deadline: { type: [string, 'null'], format: date }
     Job:
       type: object
       required: [id, company, title, description, employment_type, workplace_type, experience_level, status, created_at, updated_at]
@@ -882,15 +1490,15 @@ components:
         employment_type: { type: string, enum: [FULL_TIME, PART_TIME, CONTRACT, TEMPORARY, INTERNSHIP] }
         workplace_type: { type: string, enum: [REMOTE, HYBRID, ON_SITE] }
         location: { type: string, maxLength: 160 }
-        country: { type: string, pattern: '^[A-Z]{2}$' }
+        country: { type: string, pattern: '^([A-Z]{2})?$' }
         experience_level: { type: string, enum: [ENTRY, MID, SENIOR, LEAD] }
         skills: { type: array, items: { type: string } }
-        salary_min: { type: number, nullable: true }
-        salary_max: { type: number, nullable: true }
+        salary_min: { type: [string, 'null'], pattern: '^-?[0-9]+(?:\.[0-9]+)?$' }
+        salary_max: { type: [string, 'null'], pattern: '^-?[0-9]+(?:\.[0-9]+)?$' }
         salary_currency: { type: string }
-        application_deadline: { type: string, format: date, nullable: true }
+        application_deadline: { type: [string, 'null'], format: date }
         status: { type: string, enum: [DRAFT, PUBLISHED, CLOSED] }
-        published_at: { type: string, format: date-time, nullable: true }
+        published_at: { type: [string, 'null'], format: date-time }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
     Company:
@@ -899,7 +1507,7 @@ components:
       properties:
         id: { type: string, format: uuid }
         name: { type: string, maxLength: 200 }
-        website: { type: string, format: uri }
+        website: { anyOf: [{ type: string, format: uri }, { const: '' }] }
         description: { type: string }
         industry: { type: string, maxLength: 100 }
         company_size: { type: string, maxLength: 30 }
@@ -912,7 +1520,7 @@ components:
       required: [name]
       properties:
         name: { type: string, maxLength: 200 }
-        website: { type: string, format: uri }
+        website: { anyOf: [{ type: string, format: uri }, { const: '' }] }
         description: { type: string }
         industry: { type: string, maxLength: 100 }
         company_size: { type: string, maxLength: 30 }
@@ -952,9 +1560,9 @@ components:
         about: { type: string }
         years_of_experience: { type: integer, minimum: 0, maximum: 80 }
         current_designation: { type: string, maxLength: 160 }
-        portfolio_url: { type: string, format: uri }
-        github_url: { type: string, format: uri }
-        linkedin_url: { type: string, format: uri }
+        portfolio_url: { anyOf: [{ type: string, format: uri }, { const: '' }] }
+        github_url: { anyOf: [{ type: string, format: uri }, { const: '' }] }
+        linkedin_url: { anyOf: [{ type: string, format: uri }, { const: '' }] }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
     CandidateProfileUpdate:
@@ -967,9 +1575,9 @@ components:
         about: { type: string }
         years_of_experience: { type: integer, minimum: 0, maximum: 80 }
         current_designation: { type: string, maxLength: 160 }
-        portfolio_url: { type: string, format: uri }
-        github_url: { type: string, format: uri }
-        linkedin_url: { type: string, format: uri }
+        portfolio_url: { anyOf: [{ type: string, format: uri }, { const: '' }] }
+        github_url: { anyOf: [{ type: string, format: uri }, { const: '' }] }
+        linkedin_url: { anyOf: [{ type: string, format: uri }, { const: '' }] }
     RecruiterProfile:
       type: object
       properties:

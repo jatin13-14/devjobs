@@ -180,7 +180,7 @@ Dependency installation also succeeded: `npm ci` and `python3 -m venv .venv && .
 
 ## Private resume storage (2026-11-07)
 
-Install updated backend requirements (`pypdf==6.12.0` supplies structural PDF validation; Django/stdlib do not parse PDFs) and run `python manage.py migrate` before using resumes. Migration `candidates.0011_candidateresume` is additive. The milestone verification applies it only through Django's dedicated test-database setup; development migration application is an operator step.
+Install updated backend requirements (`pypdf==6.21.4` supplies structural PDF validation and security fixes; Django/stdlib do not parse PDFs) and run `python manage.py migrate` before using resumes. Migration `candidates.0011_candidateresume` is additive. The milestone verification applies it only through Django's dedicated test-database setup; development migration application is an operator step.
 
 `PRIVATE_RESUME_ROOT` defaults to `backend/private-resumes` (Git ignored). `RESUME_MAX_BYTES` defaults to `5242880` (5 MiB) and must be positive. Keep the root outside any served static/media tree; provision it exclusively for the backend OS account with mode `0700`. New files use `0600`, generated UUID names and fixed `.pdf` suffixes; uploaded names are discarded. Do not permit untrusted OS users or processes to write this directory or plant symlinks. No Django media route serves it. No resume endpoint returns its path or a storage URL. Set the root to an absolute private path for deployment.
 
@@ -208,3 +208,16 @@ existing dedicated `devjobs_test` database, applies pending migrations without r
 it, and launches separate local API/Vite ports 8011/5174. Supply DATABASE_URL securely;
 do not change or print `.env`. Generated synthetic data remains distinguishable by run
 UUID and `example.test` identities. Reports/traces are private ignored artifacts.
+
+
+### Reproducible Python security baseline (2026-11-07)
+
+Use Python 3.12+ (execution verified on 3.14.4; 3.12/3.13 dependency resolution
+verified) and a patched installer (`python -m pip install pip==26.3` verified).
+Install with `python -m pip install --require-hashes -r requirements/dev.txt` from
+`backend/`; production installs `requirements/base.txt`. Both entry points pin
+complete dependency closures and PyPI artifact hashes. Do not strip hashes or
+upgrade transitive packages independently: refresh reviewed pins/hashes together,
+run pip check, pip-audit and regression gates. See STAGING_READINESS.md for exact
+versions and audit evidence. The installed audit tool is isolated from application
+dependencies. Python/OS/native libraries and database/cache servers need separate review.

@@ -40,3 +40,38 @@ Replacement/deletion cleanup runs after DB commit. Crashes, cascading account de
 7. Keep previous app/static artifacts and compatible configuration. On failure drain traffic and restore the prior app only if schema-compatible. Avoid reversing audit/integrity migrations casually; use a reviewed forward fix or coordinated DB/private-storage restore during maintenance. Verify readiness and access revocation after recovery. Secret rotation can invalidate JWTs/sessions and needs an explicit operational plan.
 
 These are deployment requirements, not evidence of performed deployment, backup restoration, edge configuration or staging validation.
+
+## Coordinated backup and isolated restore procedure
+
+This is an operator procedure, **not evidence of a performed backup or restore**. See [current staging gates and smoke plan](STAGING_READINESS.md). No production backup command was executed during this review.
+
+Before scheduling backups, assign an operator, encrypted backup destination, access/key recovery policy, retention, RPO and RTO. Pin reviewed, security-patched PostgreSQL **17** client binaries via `PG17_BIN`; compatibility with server 17.5 does not establish patch security. Use a protected `PGSERVICEFILE`/`PGPASSFILE` (0600) or provider secret mechanism for `PGSERVICE`; never put credential URLs on command lines, in shell history or logs. Define `BACKUP_DIR` as a new restricted encrypted backup location and `PRIVATE_RESUME_ROOT` as the actual private durable source. Shell examples are templates; operators must supply and verify every variable. Do not point restoration at an existing database.
+
+1. Record app artifact, dependency inventory, migration graph, database identity/version, UTC start and storage identity. Stop/drain **all** application writers and operator mutations, including resume cleanup; keep them stopped until DB and files are captured. Block new traffic at the edge, not merely by stopping one worker. A consistent PostgreSQL dump alone cannot coordinate external resume files.
+2. With a restrictive `umask 077`, capture the database and private files. The filesystem example assumes a shared-volume backend; for object storage, substitute an access-controlled immutable snapshot/export plus exact object-version manifest and prove restoration with the selected adapter. No object provider or CLI is assumed here.
+
+   ```sh
+   umask 077
+   "$PG17_BIN/psql" -X --no-password --set=ON_ERROR_STOP=1 -c 'SELECT current_database(), current_user, current_setting('\''server_version'\'');'
+   "$PG17_BIN/pg_dump" --no-password --format=custom --file="$BACKUP_DIR/database.dump"
+   tar -C "$PRIVATE_RESUME_ROOT" -cpf "$BACKUP_DIR/private-resumes.tar" .
+   "$PG17_BIN/pg_restore" --list "$BACKUP_DIR/database.dump" > "$BACKUP_DIR/database.contents"
+   shasum -a 256 "$BACKUP_DIR/database.dump" "$BACKUP_DIR/private-resumes.tar" > "$BACKUP_DIR/SHA256SUMS"
+   ```
+
+   `PGSERVICE` selects the reviewed source; confirm it before dumping. Include all app tables, immutable audit events and migration history. Do not use `--schema-only`, partial table dumps or live directory copies without the writer freeze. Protect archive/manifest contents as sensitive. Capture roles/grants/extensions as reviewed infrastructure definitions; do not blindly restore cluster-wide superuser roles or plaintext role password dumps. Store deployment configuration and recoverable secrets separately under encrypted restricted access, never in Git. Verify encrypted off-host copies, checksums and retention before ending the backup window. Resume writers only after both captures succeed; on failure retain the freeze until an operator decides recovery/retry.
+3. Restore rehearsal requires an **isolated non-production** PostgreSQL 17 server and **new empty** DB, separate private storage, isolated Redis and separate secrets/networking. Set `PGSERVICE` to that verified isolated target, confirm database identity/version/emptiness, block outbound integrations and public access, and verify no production credentials/mounts are inherited. Record the source backup pair and target identity. This runbook intentionally does not create, drop, reset or overwrite databases.
+
+   ```sh
+   shasum -a 256 -c "$BACKUP_DIR/SHA256SUMS"
+   "$PG17_BIN/psql" -X --no-password --set=ON_ERROR_STOP=1 -c 'SELECT current_database(), current_user, current_setting('\''server_version'\'');'
+   "$PG17_BIN/pg_restore" --no-password --exit-on-error --single-transaction --no-owner --no-privileges --dbname="$RESTORE_DATABASE" "$BACKUP_DIR/database.dump"
+   tar -C "$RESTORE_PRIVATE_ROOT" -xpf "$BACKUP_DIR/private-resumes.tar"
+   ```
+
+   `RESTORE_DATABASE` must be the newly allocated empty isolated DB selected by `PGSERVICE`; `RESTORE_PRIVATE_ROOT` must be a new empty restricted directory. Review trusted archive contents before extraction. Restore as the selected schema/migration owner, then apply reviewed minimal runtime grants; provider-owned extensions may require a documented separate step. No `--clean`, `--create` or destructive flags are used. For a failed restore, allocate a fresh empty target rather than resetting a database. Database triggers cannot protect audit history from a privileged schema owner; restrict operator privileges and evidence access.
+4. Run the **previous app artifact** against the restored matching snapshot first: readiness, count-only integrity checks, migrations recorded, audit history/triggers and private resume reference/byte reconciliation. Missing referenced files are a failed restore; orphans are retained for review. Run `manage.py cleanup_resumes` dry-run only, never `--delete` as part of restore. Use protected operator tooling to count referenced/missing objects without logging keys or applicant data. Verify at least one synthetic candidate's bytes/metadata and authorized/unauthorized downloads. Redis throttle state is ephemeral and may restart empty; document this effect and prevent unthrottled public access during recovery.
+5. On this isolated restored copy, record `showmigrations` and `migrate --plan`, apply the new release using `migrate --noinput`, rerun it (must be no-op), then execute the staging smoke plan. Check row counts, constraints, deferred ownership/role triggers and immutable audit triggers. Any data preflight failure blocks rollout; resolve through reviewed migration work. Rehearse prior-app rollback against the migrated schema only if compatibility has been demonstrated. Otherwise rehearse a forward fix or restoration of the **paired** DB/files under maintenance, explicitly accounting for writes lost after the backup.
+6. Save restricted evidence: artifact IDs, backup checksums/timestamps, isolated target identity, commands/exit codes, reconciliation counts, successful role-denial cases, measured restore duration, achieved RPO/RTO and operator sign-off. Define restore-drill frequency and repeat after migration/storage changes. A readable `pg_restore --list` or successful backup upload is **not** restore testing. Production recovery remains an incident-operated action with its own authorization.
+
+Authoritative references: [PostgreSQL 17 pg_dump](https://www.postgresql.org/docs/17/app-pgdump.html), [backup and restore](https://www.postgresql.org/docs/17/backup.html), [PG17 security advisories](https://www.postgresql.org/support/security/17/). Review upstream client/server security updates before using these procedures.

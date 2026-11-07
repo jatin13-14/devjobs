@@ -283,3 +283,58 @@ Working tree: branch `feat/private-candidate-resumes`, **131 paths: 24 modified
 tracked, 107 untracked, zero staged/deleted**. All original 128 preserved. Ready
 for deliberate source consolidation and a hosted CI attempt; hosted success and
 deployment readiness are not claimed.
+
+## Staging readiness and release security assurance — 2026-11-07
+
+- Current baseline is `feat/private-candidate-resumes` at `8e5cf77605887b2b5aea72c30376def8130b924c`, clean at review start. Owner reports all three hosted workflows passed on that commit; this supersedes earlier hosted-pending notes for that baseline only. New local review changes have not been pushed or run in hosted CI.
+- **Release BLOCKED:** installed-version PyPI/PyPA audit found DRF 3.16.1 and pytest 8.4.2 remain affected outside existing version bounds. Applied targeted pypdf 6.21.4 pin and patched local pip to 26.3; raw findings reduced 70 → 7 (duplicates/aliases included). Full exact inventory/advisories and remediation decisions are in [staging readiness](docs/STAGING_READINESS.md) and `docs/security/`.
+- OpenAPI 3.1 semantic validation now covers 39 paths/55 operations, exact Django API routes/methods, unique IDs, UUID path parameters, explicit auth, local references, success schemas and six serializer field sets, with three negative controls. Fixed readiness path, omitted liveness, malformed comma descriptions, missing response schemas and partial-update/decimal/null contract errors. No implemented API or schema change.
+- Post-fix backend suite **134 passed, 33.06s**, strict PostgreSQL **17.5**, separate retained test DB; frontend **43 passed / 11 files**, lint/build and npm audit **PASS** (zero findings). Django checks/migration consistency, Ruff and synthetic production deploy/static dry-run checks pass. Existing build-size/JSDOM diagnostics remain.
+- PostgreSQL 17.5 compatibility does not establish current security; selecting and verifying patched PG17 server/client binaries is a release gate. PostgreSQL 14/18 and production untouched. No database resets or production migrations.
+- Added actionable staging sequence, role/private-resume/moderation/migration smoke plan, explicit PASS/BLOCKED/NOT VERIFIED checklist, and coordinated encrypted backup/isolated restore procedure. **No restore rehearsal or remote staging test performed.** Hosting/TLS/proxy/secrets/services/storage/monitoring and rollback evidence remain deployment gates.
+- Changes remain unstaged on the existing feature branch; no commits/pushes, main/PR #1 changes, cloud provisioning, deployment or `.env` modifications. See current release review/staging report for final Git inventory and browser outcome.
+
+
+## Python dependency blockers resolved — 2026-11-07
+
+**Release-security verdict: PASS WITH BLOCKERS.** Python dependency gate PASS;
+remaining PostgreSQL patch-level, infrastructure and operational release gates remain.
+This supersedes earlier DRF/pytest blocker statements. DRF **3.16.1 → 3.18.3**,
+pytest **8.4.2 → 9.0.3**; Django **5.2.19**, SimpleJWT **5.5.1**, pypdf **6.21.4**,
+psycopg/binary **3.3.8**, pytest-django **4.14.0**, Redis client **6.4.0** retained.
+Complete runtime/test transitive closures now have exact pins and SHA-256 artifact
+hashes; clean Python 3.14.4 install and pip check PASS; Python 3.12/3.13 resolution PASS.
+No code/API/schema/authentication change or test fixture adaptation was required.
+
+Resolved IDs: PYSEC-2026-3827, PYSEC-2026-3828, CVE-2026-114136,
+CVE-2026-114137, CVE-2026-114138 (runtime DRF), PYSEC-2026-1845
+(alias CVE-2025-71176, development pytest). Seven prior raw records are six unique
+IDs; pytest was duplicated. pip-audit 2.10.1 over 26 distributions: **zero findings,
+zero skips**, no suppressions. Historical evidence preserved alongside new secure
+inventory, dependency tree, raw audit and count summary in `docs/security/`.
+
+Verification: backend **134 tests + 59 subtests PASS (33.32s)** on guarded PostgreSQL
+17.5; Django check/migration consistency/Ruff PASS; semantic OpenAPI **39 paths /
+55 operations PASS**; frontend **43 tests / 11 files PASS (6.23s)**, lint/build PASS;
+Chromium **1 PASS (23.1s)**; npm audit **zero**. Existing bundle-size advisory and
+JSDOM diagnostics remain. Exact commands, version inventory, compatibility decisions,
+advisory aliases/fixed boundaries and limits are in the Python security resolution
+section of `docs/STAGING_READINESS.md`. Hosted CI for these local changes unverified.
+
+Branch `feat/private-candidate-resumes`, index empty; existing staging-readiness
+work preserved. No .env changes/exposure, database resets, PostgreSQL 14/18 changes,
+production infrastructure changes, deployment or Git publishing actions.
+
+Final dependency-task Git check: 7 modified tracked / 8 untracked files, zero
+staged/deleted; all initial paths preserved; `git diff --check` PASS. Clean-environment
+comparison confirms all 26 installed versions exactly match the audited inventory.
+
+## Security remediation publishing — 2026-11-07
+
+Reviewed all 7 modified tracked and 8 untracked files for the security/staging
+remediation commit. Exact dependency pins and SHA-256 hashes, audit evidence,
+OpenAPI corrections/validator and staging runbooks are included. Frontend CI now
+also triggers on backend requirements changes so all three hosted workflows can
+verify the same remediation SHA. No runtime API or database schema changes.
+Hosted results will be reported after pushing the feature branch; release
+PostgreSQL patch-level and infrastructure/operational gates remain unresolved.
