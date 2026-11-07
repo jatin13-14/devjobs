@@ -29,6 +29,12 @@ INSTALLED_APPS = [
     'rest_framework',
     'django_filters',
     'apps.accounts',
+    'apps.candidates',
+    'apps.recruiters',
+    'apps.companies',
+    'apps.jobs',
+    'apps.applications',
+    'apps.moderation',
 ]
 
 MIDDLEWARE = [
@@ -121,3 +127,15 @@ REST_FRAMEWORK = {
     },
 }
 CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173').split(',')
+
+# Private documents are deliberately separate from public media/static assets.
+PRIVATE_RESUME_ROOT = Path(os.getenv("PRIVATE_RESUME_ROOT", BASE_DIR / "private-resumes"))
+RESUME_MAX_BYTES = int(os.getenv("RESUME_MAX_BYTES", str(5 * 1024 * 1024)))
+if RESUME_MAX_BYTES <= 0:
+    raise ImproperlyConfigured("RESUME_MAX_BYTES must be positive.")
+
+# Optional Django Storage implementation; custom backends must remain private.
+PRIVATE_RESUME_STORAGE_BACKEND = os.getenv("PRIVATE_RESUME_STORAGE_BACKEND", "")
+FILE_UPLOAD_MAX_MEMORY_SIZE = min(RESUME_MAX_BYTES, 1024 * 1024)
+DATA_UPLOAD_MAX_MEMORY_SIZE = RESUME_MAX_BYTES + 64 * 1024
+DATA_UPLOAD_MAX_NUMBER_FILES = 1

@@ -8,3 +8,5 @@ dj-database-url>=2.3,<3
 python-dotenv>=1.0,<2
 gunicorn>=23,<24
 redis>=5,<7
+pycountry==24.6.1
+pypdf==6.12.0
