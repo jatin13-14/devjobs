@@ -1,3 +1,4 @@
+import { message } from 'antd';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -8,14 +9,14 @@ import { useAuth } from '../auth/useAuth.js';
 vi.mock('../auth/api.js', () => ({ http: { get: vi.fn(), post: vi.fn() } }));
 vi.mock('../auth/useAuth.js', () => ({ useAuth: vi.fn() }));
 beforeEach(() => { vi.clearAllMocks(); http.get.mockImplementation((url) => Promise.resolve({ data: url.includes('overview') ? { companies: 1 } : { count: 1, results: [{ id: 'one', name: 'Test Company', is_suspended: false }] } })); });
-afterEach(cleanup);
+afterEach(() => { cleanup(); message.destroy(); });
 it('denies ordinary users access to the admin route', () => {
   useAuth.mockReturnValue({ user: { role: 'recruiter' } });
   render(<MemoryRouter initialEntries={['/admin']}><Routes><Route element={<RouteGuard platformAdmin />}><Route path="/admin" element={<AdminPage />} /></Route><Route path="/" element={<p>Public jobs</p>} /></Routes></MemoryRouter>);
   expect(screen.getByText('Public jobs')).toBeInTheDocument(); expect(http.get).not.toHaveBeenCalled();
 });
 it('requires a reason and submits a confirmed decision', async () => {
-  http.post.mockResolvedValue({ data: {} }); render(<AdminPage />);
+  http.post.mockResolvedValue({ data: {} }); render(<MemoryRouter><AdminPage /></MemoryRouter>);
   fireEvent.click(await screen.findByRole('button', { name: 'Moderate' }));
   expect(screen.getByRole('button', { name: 'OK' })).toBeDisabled();
   fireEvent.change(screen.getByLabelText('Moderation reason'), { target: { value: 'Policy violation' } });
@@ -24,6 +25,6 @@ it('requires a reason and submits a confirmed decision', async () => {
   // Ant Design modal rendering exceeds five seconds on shared hosted runners.
 }, 15000);
 it('displays authorization and API failures', async () => {
-  http.get.mockRejectedValue({ response: { data: { detail: 'Permission denied.' } } }); render(<AdminPage />);
+  http.get.mockRejectedValue({ response: { data: { detail: 'Permission denied.' } } }); render(<MemoryRouter><AdminPage /></MemoryRouter>);
   expect(await screen.findByRole('alert')).toHaveTextContent('Permission denied.');
 });

@@ -353,3 +353,95 @@ Follow-up local validation: targeted moderation test 3/3 PASS; full `npm test`
 /tmp/devjobs-publish-build --emptyOutDir false` PASS (existing chunk advisory).
 Initial test invocation from repository root failed ENOENT; corrected frontend
 invocations above passed. Repeat Python audit and npm audit: zero findings.
+
+## Role-based frontend redesign — 2026-11-07
+
+Implemented shared themed workspaces with indigo candidate, teal recruiter and
+purple admin navigation, responsive sidebars, accessible focus/skip navigation,
+reduced motion and long-text wrapping. Candidate overview uses real profile,
+resume and application data; skills have a dedicated destination. Recruiter
+company/applicant directories, server-backed company job search and grouped job
+forms reuse existing APIs. Admin resource navigation, statistic cards, status
+labels, audit dates and moderation success feedback are integrated. Registration
+and dedicated admin sign-in are redesigned; login return paths respect roles.
+No backend/API/schema/authentication-model changes or new dependencies.
+
+Verification and screenshot evidence are recorded in `docs/UI_REDESIGN_REVIEW.md`.
+Existing local-readiness documentation changes were preserved. No environment
+edits, database resets, PostgreSQL 14/18 changes, deployment, staging, commits,
+pushes or PR operations. Work remains on `feat/private-candidate-resumes`.
+
+Final redesign verification: frontend **46 tests / 12 files PASS**, ESLint and
+production build PASS (537.30 kB shared-chunk advisory); Chromium **1 PASS, 22.9s**,
+including registration screenshots and no uncaught page errors. Workspace widths
+1440/768/390 and registration widths 1440/390 fit without document overflow.
+`git diff --check` PASS. Git: 16 modified tracked / 6 untracked files,
+index empty. See the redesign review for exact commands and verification limits.
+
+## Candidate indigo and navy UI refinement — 2026-11-08
+
+Refined the existing uncommitted redesign: semantic theme/CSS tokens, navy
+candidate sidebar, mobile workspace and job-filter drawers, user menu, actual
+profile/skills/links overview, deterministic nine-check completion including resume,
+and published job preview. Added confirmed profile cancel, application pagination,
+job-detail/resume retry and duplicate application submission guard. Existing
+Candidate, Recruiter and Admin routes/APIs remain in use. No backend, schema,
+permission, environment or database changes; no dependencies added.
+
+Verification details and remaining limits are in `docs/CANDIDATE_UI_REVIEW.md`.
+Prior working-tree changes are preserved; no staging, commit, push or deployment.
+
+## Approved candidate reference implementation — 2026-11-08
+
+Replaced candidate overview/metrics with the supplied reference dashboard structure:
+welcome, published job rows and compact profile/resume/recent-applications panels.
+Added isolated candidate light/dark theme persistence, fixed desktop navigation,
+responsive bottom navigation, real-profile account display, header search and private
+resume download. Candidate routes and candidate auth screens inherit this shell;
+recruiter/admin layout branches are retained. No backend/API/schema/dependency,
+environment or database changes, staging, commit, push, PR action or deployment.
+
+Frontend lint, 49 tests/14 files and production build PASS; existing bundle-size
+advisory/JSDOM diagnostics remain. Chromium captured both themes at all nine
+requested viewports; no dashboard or candidate-route horizontal overflow, theme
+persistence, mobile navigation, logout and anonymous route protection PASS.
+See docs/CANDIDATE_UI_REVIEW.md for final visual/functional evidence and limits.
+
+## Final Candidate UI audit — 2026-11-08
+
+**Overall FAIL: commit isolation gate blocked.** Candidate live read-only audit
+passed both themes at all nine requested sizes without horizontal overflow;
+login/search/details/applications/profile/resume display, unsaved input restoration,
+theme persistence, mobile navigation and logout passed. Increased mobile buttons
+to 44px minimum touch height; corrected obsolete E2E account-menu/dashboard selectors.
+Original reference images unavailable this turn: used prior review findings; exact
+comparison not repeated. Recruiter login/profile and Admin login/all five sections
+passed. Repeated Admin login reproduced HTTP 429 with visible error and Retry-After:
+new timeout is rate limiting, with historical cause unprovable without old traces.
+No frontend auth defect verified; no backend/auth/API/schema/dependency/data changes.
+
+Final frontend `npm run lint`, `npm test` (49/14 files), `npm run build` PASS;
+`git diff --check` PASS. Read-only Chromium final harness PASS with expected
+throttling explicitly distinguished from successful logins. Stored mutation E2E
+suite not run because this task prohibits database writes. Shared bundle 743.14 kB
+(243.14 kB gzip), framework/Ant Design/navigation dependencies; routes already lazy,
+no speculative chunking change. Existing JSDOM diagnostics remain non-failing.
+
+All 33 initial individual dirty paths preserved; index empty. Candidate integration
+is intertwined with earlier shared Recruiter/Admin layout/theme/redesign changes;
+a tested Candidate-only commit boundary has not been established. Following the
+explicit stop rule, nothing staged/committed; no SHA, push, merge, PR #1 edit or
+deployment. Resolve mixed-change isolation and authorize a disposable browser-test
+database before completing the delivery gate. Full inventory, commands, evidence
+and limits: `docs/CANDIDATE_UI_REVIEW.md`. Recruiter UI work not begun in this audit.
+
+## Frontend commit boundary resolved — 2026-11-08
+
+Selected verified integrated frontend boundary B: Candidate UI and its existing
+shared/Recruiter/Admin layout dependencies. No redesign or backend/API/schema/
+production configuration change. Frontend lint, 49 tests / 14 files, build and
+read-only three-role browser checks PASS. Mutation E2E skipped: existing runner
+requires the prohibited devjobs_test endpoint; no disposable isolation provisioned.
+Unrelated local operations notes preserved outside the commit. Full 33-path
+classification, staged-snapshot checks, throttle findings and limitations are in
+docs/CANDIDATE_UI_REVIEW.md. Recruiter redesign has not begun.

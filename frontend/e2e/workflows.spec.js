@@ -3,16 +3,33 @@ import { test, expect } from '@playwright/test';
 const api = 'http://127.0.0.1:8011/api/v1';
 const password = 'Synthetic-browser-pass-781!';
 const run = process.env.E2E_RUN_ID;
+async function inspectWorkspace(page, role) {
+  await expect(page.getByRole('navigation', { name: `${role} workspace` })).toBeVisible();
+  for (const width of [1440, 768, 390]) {
+    await page.setViewportSize({ width, height: 960 });
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `/tmp/devjobs-redesign-screenshots/${role}-${width}.png`, fullPage: true });
+  }
+  await page.setViewportSize({ width: 1440, height: 960 });
+}
+
 async function login(page, email, pass = password) {
-  await page.goto('/login');
+  await page.goto(email === process.env.E2E_ADMIN_EMAIL ? '/admin/login' : '/login');
   await page.getByLabel('Email address').fill(email);
   await page.getByLabel('Password', { exact: true }).fill(pass);
   await page.locator('form').getByRole('button', { name: 'Log in', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Log out' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open user menu' })).toBeVisible();
 }
 async function register(page, role) {
   const email = `e2e-${role}-${run}@example.test`;
   await page.goto(`/register/${role}`);
+  await expect(page.getByLabel('Full name')).toBeVisible();
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 960 });
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.screenshot({ path: `/tmp/devjobs-redesign-screenshots/register-${role}-${width}.png`, fullPage: true });
+  }
+  await page.setViewportSize({ width: 1440, height: 960 });
   await page.getByLabel('Full name').fill(`Synthetic ${role} ${run}`);
   await page.getByLabel('Email address').fill(email);
   await page.getByLabel('Password', { exact: true }).fill(password);
@@ -32,8 +49,12 @@ async function call(page, method, path, data) {
 
 test('candidate, recruiter and administrator workflow with private access enforcement', async ({ browser }) => {
   expect(run, 'Use backend/run_browser.py to enforce the dedicated database').toBeTruthy();
+  const browserErrors = [];
   const candidateContext = await browser.newContext(); const candidate = await candidateContext.newPage();
+  candidate.on('pageerror', (error) => browserErrors.push(error.message));
   await register(candidate, 'candidate');
+  await expect(candidate.getByRole('heading', { name: 'Find Your Next Opportunity' })).toBeVisible();
+  await inspectWorkspace(candidate, 'candidate');
   await candidate.goto('/candidate/profile');
   await candidate.getByLabel('professional headline').fill('Synthetic browser engineer');
   await candidate.getByRole('button', { name: 'Save profile' }).click();
@@ -59,7 +80,9 @@ test('candidate, recruiter and administrator workflow with private access enforc
   await expect(candidate.getByRole('button', { name: 'Download resume' })).toBeVisible();
 
   const recruiterContext = await browser.newContext(); const recruiter = await recruiterContext.newPage();
+  recruiter.on('pageerror', (error) => browserErrors.push(error.message));
   await register(recruiter, 'recruiter');
+  await inspectWorkspace(recruiter, 'recruiter');
   await recruiter.goto('/recruiter/profile');
   await recruiter.getByLabel('designation').fill('Synthetic hiring lead');
   await recruiter.getByRole('button', { name: 'Save profile' }).click();
@@ -129,8 +152,10 @@ test('candidate, recruiter and administrator workflow with private access enforc
   expect([403, 404]).toContain(denied.status());
 
   const adminContext = await browser.newContext(); const admin = await adminContext.newPage();
+  admin.on('pageerror', (error) => browserErrors.push(error.message));
   await login(admin, process.env.E2E_ADMIN_EMAIL, process.env.E2E_ADMIN_PASSWORD);
   await expect(admin.getByRole('heading', { name: 'Platform administration' })).toBeVisible();
+  await inspectWorkspace(admin, 'admin');
   await admin.getByLabel('Search moderation records').fill(`Synthetic Company ${run}`);
   await admin.getByLabel('Search moderation records').press('Enter');
   await admin.getByRole('row').filter({ hasText: `Synthetic Company ${run}` }).getByRole('button', { name: 'Moderate', exact: true }).click();
@@ -143,5 +168,6 @@ test('candidate, recruiter and administrator workflow with private access enforc
   await candidate.reload();
   await expect(candidate).toHaveURL(/login/);
   expect(await candidate.evaluate(() => localStorage.getItem('devjobs.auth'))).toBeNull();
+  expect(browserErrors).toEqual([]);
   await candidateContext.close(); await recruiterContext.close(); await adminContext.close();
 });

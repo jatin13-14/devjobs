@@ -4,6 +4,8 @@ import { PublicLayout } from '../components/templates/PublicLayout.jsx';
 import { AuthProvider } from '../features/auth/AuthContext.jsx';
 import { RouteGuard } from '../features/auth/RouteGuard.jsx';
 
+const CandidateDashboard = lazy(() => import('../features/dashboard/CandidateDashboard.jsx').then((module) => ({ default: module.CandidateDashboard })));
+const CompanyDirectory = lazy(() => import('../features/jobs/pages/CompanyDirectory.jsx').then((module) => ({ default: module.CompanyDirectory })));
 const ProfilePage = lazy(() => import('../features/profiles/ProfilePage.jsx').then((module) => ({ default: module.ProfilePage })));
 const CompanyPage = lazy(() => import('../features/companies/CompanyPage.jsx').then((module) => ({ default: module.CompanyPage })));
 const JobSearchPage = lazy(() => import('../features/jobs/pages/JobSearchPage.jsx').then((module) => ({ default: module.JobSearchPage })));
@@ -38,17 +40,21 @@ export default function App() {
           <Route path="/" element={<JobSearchPage />} />
           <Route path="/jobs/:id" element={<JobDetailPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/admin/login" element={<LoginPage admin />} />
           <Route path="/register/candidate" element={<CandidateRegistrationPage />} />
           <Route path="/register/recruiter" element={<RecruiterRegistrationPage />} />
           <Route element={<RouteGuard roles={['candidate']} />}>
             <Route path="/candidate/profile" element={<ProfilePage candidate />} />
-            <Route path="/candidate" element={<Navigate to="/candidate/applications" replace />} />
+            <Route path="/candidate" element={<CandidateDashboard />} />
+            <Route path="/candidate/skills" element={<ProfilePage candidate skillsOnly />} />
             <Route path="/jobs/:id/apply" element={<JobApplicationPage />} />
             <Route path="/candidate/resume" element={<ResumePage />} />
             <Route path="/candidate/applications" element={<ApplicationsPage />} />
             <Route path="/candidate/applications/:applicationId" element={<ApplicationDetailPage />} />
           </Route>
           <Route element={<RouteGuard roles={['recruiter']} />}>
+            <Route path="/recruiter/companies" element={<CompanyDirectory />} />
+            <Route path="/recruiter/applicants" element={<CompanyDirectory applicants />} />
             <Route path="/recruiter/profile" element={<ProfilePage />} />
             <Route path="/recruiter/companies/new" element={<CompanyPage />} />
             <Route path="/recruiter/companies/:id" element={<CompanyPage />} />

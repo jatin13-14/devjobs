@@ -4,7 +4,7 @@ export const jobsApi = {
   list: (params) => http.get('/jobs/', { params }).then(({ data }) => data),
   detail: (id) => http.get(`/jobs/${id}/`).then(({ data }) => data),
   apply: (id, payload) => http.post(`/jobs/${id}/applications/`, payload).then(({ data }) => data),
-  applications: () => http.get('/candidates/me/applications/').then(({ data }) => data),
+  applications: (params) => http.get('/candidates/me/applications/', { params }).then(({ data }) => data),
   application: (id) => http.get(`/candidates/me/applications/${id}/`).then(({ data }) => data),
   withdraw: (id) => http.patch(`/candidates/me/applications/${id}/`, {}).then(({ data }) => data),
   recruiterProfile: () => http.get('/recruiters/me/profile/').then(({ data }) => data),

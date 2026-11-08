@@ -4,17 +4,9 @@ import { ConfigProvider } from 'antd';
 import App from './app/App.jsx';
 import './styles/tokens.css';
 import './styles/global.css';
+import './styles/candidate.css';
 
-const theme = {
-  token: {
-    colorPrimary: '#2563eb',
-    colorText: '#101828',
-    colorTextSecondary: '#667085',
-    colorBgLayout: '#f8fafc',
-    borderRadius: 10,
-    fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-  },
-};
+import { theme } from './styles/theme.js';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

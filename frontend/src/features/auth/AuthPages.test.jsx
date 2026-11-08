@@ -72,6 +72,14 @@ describe('authentication screens', () => {
     renderAuth(<LoginPage />, '/recruiter');
     expect(await screen.findByText('Recruiter area')).toBeInTheDocument();
   });
+  it('sends a candidate to their own workspace when a login return path targets recruiters', async () => {
+    const user = userEvent.setup();
+    authApi.login.mockResolvedValueOnce({ access: 'a', refresh: 'r', user: { id: 'c', role: 'candidate' } });
+    renderAuth(<LoginPage />, { pathname: '/login', state: { from: { pathname: '/recruiter/jobs' } } });
+    await fill(user, 'Email address', 'casey@example.test'); await fill(user, 'Password', 'Strong-pass-42!');
+    await user.click(screen.getByRole('button', { name: 'Log in' }));
+    expect(await screen.findByText('Candidate area')).toBeInTheDocument();
+  });
   it('clears stored credentials on logout', async () => {
     window.localStorage.setItem('devjobs.auth', JSON.stringify({ access: 'a', refresh: 'r', user: { role: 'candidate' } }));
     const user = userEvent.setup();
