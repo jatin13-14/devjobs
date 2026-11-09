@@ -4,6 +4,7 @@ import { Button, ConfigProvider, Drawer } from 'antd';
 import { AppstoreOutlined, SearchOutlined, FileTextOutlined, UserOutlined, TeamOutlined, BankOutlined, SafetyOutlined, HistoryOutlined, CodeOutlined } from '@ant-design/icons';
 import { PrimaryNavigation } from '../molecules/PrimaryNavigation.jsx';
 import { useAuth } from '../../features/auth/useAuth.js';
+import { RecruiterLayout } from './RecruiterLayout.jsx';
 import { CandidateLayout } from './CandidateLayout.jsx';
 import { roleColors } from '../../styles/theme.js';
 
@@ -18,6 +19,7 @@ export function PublicLayout() {
   const authPage = /^(\/login|\/register|\/admin\/login)/.test(location.pathname);
   const role = !authPage && user ? (user.is_platform_admin ? 'admin' : user.role) : null;
   if (role === 'candidate' || (!user && (location.pathname === '/login' || location.pathname === '/register/candidate'))) return <CandidateLayout authenticated={role === 'candidate'} />;
+  if (role === 'recruiter') return <RecruiterLayout />;
   const sidebar = role && <><div className="workspace-label">{role === 'candidate' ? 'Career workspace' : 'Workspace'}</div><nav aria-label={`${role} workspace`}>{navigation[role]?.map(([to, label, Icon]) => <NavLink key={to} to={to} end={to === '/' || to === '/candidate' || to === '/recruiter'} onClick={() => setMenuOpen(false)} className={({ isActive }) => (role === 'admin' ? location.pathname + location.search === to : isActive) ? 'workspace-link active' : 'workspace-link'}>{createElement(Icon, { 'aria-hidden': true })}<span>{label}</span></NavLink>)}</nav></>;
   return <ConfigProvider theme={{ token: { colorPrimary: roleColors[role || (location.pathname.includes('recruiter') ? 'recruiter' : location.pathname === '/admin/login' ? 'admin' : 'candidate')] } }}><div className={`app-shell ${role ? `workspace role-${role}` : 'public-shell'}`}>
     <a className="skip-link" href="#main-content">Skip to content</a><PrimaryNavigation />

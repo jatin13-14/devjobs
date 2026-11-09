@@ -28,21 +28,25 @@ describe('recruiter workspace', () => {
     jobsApi.recruiterProfile.mockResolvedValue({ name: 'Riley Recruiter' });
     jobsApi.recruiterCompanies.mockResolvedValue([{ id: 'company-1', name: 'Synthetic Labs', role: 'OWNER' }]);
     jobsApi.companyJobs.mockResolvedValue({ results: [] });
+    jobsApi.company.mockResolvedValue({});
     mount('/recruiter', <RecruiterDashboardPage />);
-    expect(await screen.findByText(/Welcome, Riley Recruiter/)).toBeInTheDocument();
-    expect(await screen.findByText('Synthetic Labs')).toBeInTheDocument();
+    await waitFor(() => expect(jobsApi.companyJobs).toHaveBeenCalledTimes(2));
+    expect(await screen.findByRole('heading', { name: 'Recruiter Workspace' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Synthetic Labs')).toBeInTheDocument());
     expect(screen.getByText('Active membership · OWNER')).toBeInTheDocument();
-    expect(screen.getByText('Create job')).toBeInTheDocument();
+    expect(screen.getByText('Post a Job')).toBeInTheDocument();
   });
 
   it('lets a recruiter choose among multiple companies and hides controls for MEMBER', async () => {
     jobsApi.recruiterProfile.mockResolvedValue({ name: 'Riley Recruiter' });
     jobsApi.recruiterCompanies.mockResolvedValue([{ id: 'company-1', name: 'Synthetic Labs', role: 'MEMBER' }, { id: 'company-2', name: 'Other Labs', role: 'ADMIN' }]);
     jobsApi.companyJobs.mockResolvedValue({ results: [] });
+    jobsApi.company.mockResolvedValue({});
     mount('/recruiter?company=company-1', <RecruiterDashboardPage />);
     expect(await screen.findByText('Active membership · MEMBER')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Company' })).toBeInTheDocument();
-    expect(screen.queryByText('Create job')).not.toBeInTheDocument();
+    expect(screen.queryByText('Post a Job')).not.toBeInTheDocument();
+    expect(jobsApi.recruiterApplications).not.toHaveBeenCalled();
   });
 
   it('shows an empty membership state', async () => {

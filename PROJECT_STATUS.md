@@ -445,3 +445,51 @@ requires the prohibited devjobs_test endpoint; no disposable isolation provision
 Unrelated local operations notes preserved outside the commit. Full 33-path
 classification, staged-snapshot checks, throttle findings and limitations are in
 docs/CANDIDATE_UI_REVIEW.md. Recruiter redesign has not begun.
+
+## Approved recruiter reference implementation — 2026-11-08
+
+Implemented a dedicated recruiter layout and dashboard using the attached approved
+light/dark desktop/mobile mockup (shared-link fetch unavailable). Added isolated
+persistent themes, emerald sidebar/header/bottom navigation, real company/job/
+application metrics, paginated application aggregation, recent applicants and
+seven-day chart. Existing job/editor/applicant/company/membership/profile routes
+inherit role-scoped styling. Search connects to existing company job filtering;
+OWNER/ADMIN controls remain restricted, MEMBER applicant aggregation is skipped.
+Candidate/Admin source experiences retained; no dependencies, backend/API/schema,
+authentication/environment/production settings or database changes.
+
+Frontend `npm run lint`, `npm test` (53 tests/16 files), `npm run build`, and
+`git diff --check` PASS. Existing bundle advisory/JSDOM diagnostics remain.
+Chromium: 18 dashboard theme/viewport captures and recruiter route overflow checks
+PASS; actual job/edit/create/applicant/company/profile views, existing applicant
+detail, mobile navigation/logout/protected routing and Candidate checks PASS.
+Focused Admin login/all five sections PASS; a later combined run stopped at Admin
+HTTP 429, so that combined command is not reported as passing. No further login
+attempts or live mutation tests after that limit. Explicit recruiter motion disabling
+resolved a hidden account-menu animation state found during browser verification.
+
+Exact reference interpretation, files, screenshots, visual deviations, commands,
+permissions/data semantics, scalability limits and separate browser results:
+`docs/RECRUITER_UI_REVIEW.md`. Existing documentation edits preserved. Index empty;
+no staging, commit, push, merge, PR modification or deployment; original branch and
+HEAD retained. Screenshots remain outside Git because they contain live profile data.
+
+## Final recruiter audit — 2026-11-09
+
+Retained the recruiter reference implementation; corrected mobile account touch
+width from 40px to 44px and added local-date/partial-page aggregation regressions.
+Read-only three-role browser audit PASS, recruiter 18 theme/viewport captures and
+routes PASS; Candidate routes and all five Admin sections PASS, zero browser/API
+errors. Reference URL unavailable; original-reference comparison not repeated.
+Frontend lint, 55 tests / 16 files, build and whitespace checks PASS. Mutation E2E
+skipped because authorized disposable database isolation is unavailable. No backend,
+API/schema, dependencies, auth security, production configuration or record changes.
+Focused local recruiter commit excludes unrelated local-operations documentation.
+See docs/RECRUITER_UI_REVIEW.md for exact boundary, independent snapshot checks,
+remaining limitations and delivery results. Admin development has not begun.
+
+Independent staged export: lint, 55 tests / 16 files and build PASS; read-only
+snapshot browser audit PASS, including corrected 44px controls, all recruiter
+sizes/themes, independent API totals and fuller Candidate/Admin/logout checks.
+Final local delivery gate PASS with documented reference/E2E limits. Exact
+12-path recruiter boundary reviewed; credential/whitespace checks PASS.

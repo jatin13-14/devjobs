@@ -1,3 +1,4 @@
+import { RecruiterOverview } from '../components/RecruiterOverview.jsx';
 import { CompanyDirectory } from './CompanyDirectory.jsx';
 import { resumeApi, resumeError } from '../../resumes/api.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -39,20 +40,18 @@ export function RecruiterDashboardPage() {
   const refresh = useCallback(async () => { const request = ++requestId.current; setLoading(true); setError(''); setJobs([]); setJobsCompanyId(''); try { const [p, list] = await Promise.all([jobsApi.recruiterProfile(), jobsApi.recruiterCompanies()]); if (request !== requestId.current) return; setProfile(p); setCompanies(list); const selectedId = list.length === 1 ? list[0].id : (list.some((item) => item.id === companyId) ? companyId : ''); if (selectedId !== companyId) chooseCompany(selectedId); if (selectedId) { let j = await jobsApi.companyJobs(selectedId); const all = [...(j.results || [])]; let page = 1; while (j.next) { j = await jobsApi.companyJobs(selectedId, { page: ++page }); if (request !== requestId.current) return; all.push(...(j.results || [])); } if (request !== requestId.current) return; setJobs(all); setJobsCompanyId(selectedId); } } catch (e) { if (request === requestId.current) setError(apiMessage(e)); } finally { if (request === requestId.current) setLoading(false); } }, [companyId, chooseCompany]);
   useEffect(() => { refresh(); }, [refresh, user?.id]);
   if (loading) return <div className="page-state"><Spin description="Loading recruiter workspace…" /></div>;
-  return <Page><p className="eyebrow">RECRUITER WORKSPACE</p><h1>Welcome{profile?.name ? `, ${profile.name}` : ''}</h1><p className="company-name">Organize your team, manage your roles and find your next hire.</p><div className="recruiter-actions"><Link to="/recruiter/companies">Manage companies →</Link><Link to="/recruiter/companies/new">Create company →</Link><Link to="/recruiter/applicants">Review applicants →</Link></div><LoadError error={error} retry={refresh} />
-    {!error && companies.length === 0 && <Card><Empty description="You have no active company memberships yet." /></Card>}
-    {companies.length > 1 && <CompanyPicker companies={companies} value={companyId} onChange={chooseCompany} />}
-    {selected && !error && <><Card title={<Link to={`/recruiter/companies/${selected.id}`}>{selected.name}</Link>}><p>Active membership · {selected.role}</p></Card><div className="recruiter-stats">{['DRAFT', 'PUBLISHED', 'CLOSED'].map((state) => <Card key={state}><span>{statusLabel(state)}</span><strong>{(jobsCompanyId === selected.id ? jobs : []).filter((job) => job.status === state).length}</strong></Card>)}</div><div className="recruiter-actions"><Link to={`/recruiter/jobs?company=${companyId}`}>Company jobs</Link>{['OWNER', 'ADMIN'].includes(selected.role) && <Link to={`/recruiter/jobs/new?company=${companyId}`}>Create job</Link>}</div>{jobsCompanyId === selected.id && jobs.length === 0 && <Empty description="No company jobs yet." />}</>}
-  </Page>;
+  return <><RecruiterOverview profile={profile} selected={selected} jobs={jobsCompanyId === selected?.id ? jobs : []} companyPicker={companies.length > 1 && <CompanyPicker companies={companies} value={companyId} onChange={chooseCompany} />} error={error} retry={refresh} />{!error && companies.length === 0 && <Page><Empty description="You have no active company memberships yet." /></Page>}</>;
 }
 
 export function CompanyJobsPage() {
+  const [params] = useSearchParams();
   const { companyId } = useCompany();
-  return companyId ? <CompanyJobsList key={companyId} /> : <CompanyDirectory applicants />;
+  return companyId ? <CompanyJobsList key={`${companyId}:${params.get('search') || ''}`} /> : <CompanyDirectory applicants />;
 }
 
 function CompanyJobsList() {
-  const [search, setSearch] = useState('');
+  const [initialParams] = useSearchParams();
+  const [search, setSearch] = useState(initialParams.get('search') || '');
   const [page, setPage] = useState(1); const [status, setStatus] = useState(''); const [pagination, setPagination] = useState({});
   const { companyId } = useCompany(); const { canManage } = useCompanyMembership(companyId); const [jobs, setJobs] = useState([]); const [jobsCompanyId, setJobsCompanyId] = useState(''); const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const requestId = useRef(0);
   const refresh = useCallback(async () => { const request = ++requestId.current; setJobs([]); setJobsCompanyId(''); if (!companyId) { setError('A company ID is required to load jobs.'); setLoading(false); return; } setLoading(true); setError(''); try { const result = await jobsApi.companyJobs(companyId, { page, status: status || undefined, ...(search ? { search } : {}) }); if (request !== requestId.current) return; setJobs(result.results || []); setPagination(result); setJobsCompanyId(companyId); } catch (e) { if (request === requestId.current) setError(apiMessage(e)); } finally { if (request === requestId.current) setLoading(false); } }, [companyId, page, status, search]);
