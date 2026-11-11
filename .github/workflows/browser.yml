@@ -19,24 +19,6 @@ jobs:
   chromium:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    services:
-      postgres:
-        image: postgres:17.5
-        env:
-          # PGPORT sets the server default as well as the libpq client default.
-          PGPORT: 5433
-          POSTGRES_DB: devjobs_test
-          POSTGRES_USER: devjobs
-          POSTGRES_PASSWORD: devjobs
-        ports:
-          - 5433:5433
-        options: >-
-          --health-cmd "pg_isready -h 127.0.0.1 -p 5433 -U devjobs -d devjobs_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 12
-    env:
-      DATABASE_URL: postgresql://devjobs:devjobs@127.0.0.1:5433/devjobs_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -64,6 +46,6 @@ jobs:
         if: failure()
         with:
           name: chromium-failure-screenshots
-          path: frontend/test-results/**/*.png
+          path: /tmp/devjobs-e2e-*-results/**/*.png
           if-no-files-found: ignore
           retention-days: 3

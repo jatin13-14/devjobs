@@ -202,12 +202,11 @@ Suspension retains records and private resume bytes. Subsequent requests recheck
 
 ### Browser workflow verification
 
-See `TESTING_STRATEGY.md` for Playwright installation and the guarded
-`backend/run_browser.py` runner. It uses only PostgreSQL 17.5 on port 5433 with the
-existing dedicated `devjobs_test` database, applies pending migrations without resetting
-it, and launches separate local API/Vite ports 8011/5174. Supply DATABASE_URL securely;
-do not change or print `.env`. Generated synthetic data remains distinguishable by run
-UUID and `example.test` identities. Reports/traces are private ignored artifacts.
+The former runner targeted `devjobs_test`; that path is now disabled. See
+[E2E isolation](E2E_ISOLATION.md). `backend/.venv/bin/python backend/run_browser.py`
+requires Docker and creates its own temporary PostgreSQL container. It ignores the
+existing database URL, verifies the cluster identity before migrations, and removes
+only its own container. No existing database or environment file is changed.
 
 
 ### Reproducible Python security baseline (2026-11-07)

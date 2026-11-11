@@ -1,62 +1,246 @@
-"""Run browser tests only against the dedicated PG17.5 database; never reset it."""
+"""Own a fresh container, verify cluster identity, run E2E, then remove only it."""
+
+import json
 import os
 import secrets
+import shutil
+import signal
 import subprocess
 import sys
 import tempfile
 import time
 import uuid
-from urllib.error import HTTPError
-from urllib.request import urlopen
+from pathlib import Path
 
-os.environ["DJANGO_SETTINGS_MODULE"] = "config.settings.test"
-os.environ["CORS_ALLOWED_ORIGINS"] = "http://127.0.0.1:5174"
-os.environ["DJANGO_ALLOWED_HOSTS"] = "127.0.0.1,localhost"
-os.environ["JWT_TOKEN_RATE"] = "100/minute"
-os.environ["DJANGO_SECRET_KEY"] = secrets.token_urlsafe(48)
+from config.e2e_runtime import Resources, reserve_listener, uninterrupted, verify_peer, wait_owned
 
-import django
+ROOT = Path(__file__).resolve().parent
 
-django.setup()
 
-from django.db import connection
+def docker(*args, **kwargs):
+    return subprocess.check_output(["docker", *args], text=True, **kwargs).strip()
 
-from apps.accounts.models import User
-from config.settings.test import is_expected_database_identity
 
-with connection.cursor() as cursor:
-    cursor.execute("SELECT current_database(), inet_server_port(), current_setting('server_version')")
-    if not is_expected_database_identity(*cursor.fetchone()):
-        raise RuntimeError("Browser tests require dedicated devjobs_test on PostgreSQL 17.5 port 5433")
+def stop_run(signum, frame):
+    raise SystemExit(128 + signum)
 
-resume_directory = tempfile.TemporaryDirectory(prefix="devjobs-e2e-resumes-")
-os.environ["PRIVATE_RESUME_ROOT"] = resume_directory.name
-subprocess.run([sys.executable, "manage.py", "migrate", "--noinput"], check=True)
-run_id = uuid.uuid4().hex
-email = f"e2e-admin-{run_id}@example.test"
-password = secrets.token_urlsafe(24)
-admin = User.objects.create_superuser(email, password)
-environment = {**os.environ, "E2E_ADMIN_EMAIL": email, "E2E_ADMIN_PASSWORD": password, "E2E_RUN_ID": run_id}
-server = subprocess.Popen([sys.executable, 'manage.py', 'runserver', '127.0.0.1:8011', '--noreload'], env=environment, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-try:
-    for attempt in range(100):
+
+def main():
+    signal.signal(signal.SIGTERM, stop_run)
+    signal.signal(signal.SIGINT, stop_run)
+    if not shutil.which("docker"):
+        raise RuntimeError("Docker is required; no existing database will be used")
+    docker("info", "--format", "{{.ServerVersion}}")
+    run = uuid.uuid4().hex
+    name = f"devjobs-e2e-{run}"
+    password = secrets.token_urlsafe(32)
+    environment = {**os.environ, "POSTGRES_PASSWORD": password}
+    container = None
+    resources = Resources(run, docker)
+    result = None
+    with tempfile.TemporaryDirectory(prefix="devjobs-e2e-") as directory:
         try:
-            urlopen('http://127.0.0.1:8011/api/v1/health/', timeout=1).close()
-            break
-        except HTTPError as error:
-            raise RuntimeError(f"Browser API readiness returned HTTP {error.code}") from None
-        except OSError:
-            if server.poll() is not None:
-                raise RuntimeError('Dedicated browser API server failed to start')
-            time.sleep(0.1)
-    else:
-        raise RuntimeError('Dedicated browser API server did not become ready')
-    result = subprocess.run(['npm', 'run', 'test:e2e'], cwd='../frontend', env=environment, check=False)
-finally:
-    server.terminate()
-    server.wait(timeout=10)
-    resume_directory.cleanup()
-    admin.is_active = False
-    admin.set_unusable_password()
-    admin.save(update_fields=["is_active", "password"])
-raise SystemExit(result.returncode)
+            with uninterrupted():
+                backend_socket = reserve_listener()
+                resources.listeners.append(backend_socket)
+                frontend_socket = reserve_listener()
+                resources.listeners.append(frontend_socket)
+            backend_url = f"http://127.0.0.1:{backend_socket.getsockname()[1]}"
+            frontend_url = f"http://127.0.0.1:{frontend_socket.getsockname()[1]}"
+            # Block signals through daemon creation and assignment. Children inherit
+            # this mask, so terminal SIGINT cannot interrupt the Docker CLI either.
+            with uninterrupted():
+                resources.creation_attempted = True
+                container = docker(
+                    "create",
+                    "--name",
+                    name,
+                    "--label",
+                    f"devjobs.e2e={run}",
+                    "--publish",
+                    "127.0.0.1::5432",
+                    "--tmpfs",
+                    "/var/lib/postgresql/data",
+                    "--env",
+                    "POSTGRES_PASSWORD",
+                    "--env",
+                    "POSTGRES_USER=e2e_owner",
+                    "--env",
+                    "POSTGRES_DB=devjobs_e2e_disposable",
+                    "postgres:17.5",
+                    env=environment,
+                )
+            with uninterrupted():
+                docker("start", container)
+            info = json.loads(docker("inspect", container))[0]
+            if info["Config"]["Labels"].get("devjobs.e2e") != run or any(
+                mount["Type"] != "tmpfs" for mount in info["Mounts"]
+            ):
+                raise RuntimeError("Unexpected container ownership or persistent mounts")
+            binding = info["NetworkSettings"]["Ports"]["5432/tcp"][0]
+            if binding["HostIp"] != "127.0.0.1":
+                raise RuntimeError("Database must be bound to loopback only")
+            for _ in range(120):
+                ready = subprocess.run(
+                    [
+                        "docker",
+                        "exec",
+                        container,
+                        "pg_isready",
+                        "-h",
+                        "127.0.0.1",
+                        "-U",
+                        "e2e_owner",
+                    ],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                )
+                if ready.returncode == 0:
+                    break
+                time.sleep(0.5)
+            else:
+                raise RuntimeError("Disposable PostgreSQL did not become ready")
+            identifier = docker(
+                "exec",
+                container,
+                "psql",
+                "-U",
+                "e2e_owner",
+                "-d",
+                "devjobs_e2e_disposable",
+                "-Atc",
+                "SELECT system_identifier FROM pg_control_system()",
+            )
+            for key in tuple(os.environ):
+                if key == "DATABASE_URL" or key.startswith("PG"):
+                    os.environ.pop(key)
+            os.environ.update(
+                PYTHON_DOTENV_DISABLED="1",
+                DEVJOBS_E2E="1",
+                E2E_RUN_ID=run,
+                E2E_SYSTEM_IDENTIFIER=identifier,
+                E2E_DATABASE_URL=(
+                    f"postgresql://e2e_owner:{password}@127.0.0.1:"
+                    f"{binding['HostPort']}/devjobs_e2e_disposable"
+                ),
+                DJANGO_SETTINGS_MODULE="config.settings.e2e",
+                DJANGO_SECRET_KEY=secrets.token_urlsafe(48),
+                PRIVATE_RESUME_ROOT=directory,
+                PRIVATE_RESUME_STORAGE_BACKEND="",
+                JWT_TOKEN_RATE="5/minute",
+                E2E_BACKEND_URL=backend_url,
+                E2E_FRONTEND_URL=frontend_url,
+                E2E_READY_TOKEN=secrets.token_urlsafe(48),
+                E2E_ARTIFACT_ROOT=directory,
+                E2E_FIXTURE_PASSWORD=secrets.token_urlsafe(24),
+            )
+            import django
+
+            django.setup()
+            from django.db import connection
+
+            from config.e2e_safety import verify_connection
+
+            verify_connection(connection, os.environ)
+            print(
+                f"Verified owned container={container[:12]} run={run} "
+                f"cluster={identifier} database=devjobs_e2e_disposable "
+                f"host=127.0.0.1:{binding['HostPort']} PostgreSQL=17",
+                flush=True,
+            )
+
+            def checked(command):
+                child = resources.spawn(
+                    [sys.executable, str(ROOT / "e2e_exec.py"), *command],
+                    cwd=ROOT,
+                    start_new_session=True,
+                )
+                if child.wait():
+                    raise RuntimeError("E2E verification command failed")
+
+            checked([sys.executable, "manage.py", "migrate", "--noinput"])
+            for command in (
+                [sys.executable, "manage.py", "check"],
+                [sys.executable, "manage.py", "makemigrations", "--check", "--dry-run"],
+                [sys.executable, "-m", "pytest", "--ds=config.settings.e2e"],
+            ):
+                checked(command)
+            from apps.accounts.models import User
+
+            email = f"e2e-admin-{run}@example.test"
+            User.objects.create_superuser(email, os.environ["E2E_FIXTURE_PASSWORD"])
+            os.environ.update(
+                E2E_ADMIN_EMAIL=email, E2E_ADMIN_PASSWORD=os.environ["E2E_FIXTURE_PASSWORD"]
+            )
+            connection.close()
+            identities = {}
+            for role, listener, command, cwd in (
+                ("backend", backend_socket, [sys.executable, str(ROOT / "e2e_server.py")], ROOT),
+                (
+                    "frontend",
+                    frontend_socket,
+                    ["node", "scripts/e2e-server.mjs"],
+                    ROOT.parent / "frontend",
+                ),
+            ):
+                environment = {
+                    **os.environ,
+                    "E2E_LISTEN_FD": str(listener.fileno()),
+                    "VITE_API_BASE_URL": f"{backend_url}/api/v1",
+                }
+                child = resources.spawn(
+                    [sys.executable, str(ROOT / "e2e_exec.py"), *command],
+                    cwd=cwd,
+                    env=environment,
+                    pass_fds=(listener.fileno(),),
+                    start_new_session=True,
+                )
+                identities[f"{role}_pid"] = child.pid
+                wait_owned(
+                    child,
+                    backend_url if role == "backend" else frontend_url,
+                    os.environ["E2E_READY_TOKEN"],
+                    run,
+                    role,
+                )
+                print(
+                    f"Verified {role} ownership run={run} pid={child.pid} endpoint={backend_url if role == 'backend' else frontend_url}",
+                    flush=True,
+                )
+            if os.environ.get("E2E_CONCURRENCY_DIRECTORY"):
+                verify_peer(
+                    os.environ["E2E_CONCURRENCY_DIRECTORY"],
+                    {
+                        "run": run,
+                        "cluster": identifier,
+                        "backend": backend_url,
+                        "frontend": frontend_url,
+                        "database": f"http://127.0.0.1:{binding['HostPort']}",
+                        **identities,
+                    },
+                    os.environ["E2E_READY_TOKEN"],
+                    connection,
+                    os.environ,
+                )
+                connection.close()
+            browser = resources.spawn(
+                [sys.executable, str(ROOT / "e2e_exec.py"), "npm", "run", "test:e2e"],
+                cwd=ROOT.parent / "frontend",
+                start_new_session=True,
+            )
+            result = browser.wait()
+            return result
+        finally:
+            original_failure = sys.exc_info()[0] is not None or result not in (None, 0)
+            try:
+                resources.cleanup()
+                print(f"Cleaned owned resources run={run}", flush=True)
+            except Exception:
+                if not original_failure:
+                    raise
+                print(f"Cleanup failed for run={run}; original failure preserved", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

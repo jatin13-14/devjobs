@@ -1,5 +1,63 @@
 # Project status
 
+## Final independent E2E working-tree audit — 2026-11-11
+
+Working-tree security review PASS: all 22 changed/untracked files inspected;
+continuous socket ownership, signed run/role/PID readiness, disposable cluster
+identity, exact-label cleanup and concurrent peer rejection reviewed. No serious
+isolation defect found; no production/API/schema/dependency change. Frontend
+lint/tests/build PASS, 62 tests / 17 files; backend Ruff and 16 pure safety tests
+PASS. Standalone runner PASS: 150 PostgreSQL tests and Chromium 1/1 (32.0s).
+Concurrent runner PASS: both 150-test suites (36.56s each), both peer rejection
+checks and Chromium 1/1 each (32.2s / 32.3s), zero browser errors. All three owned
+containers cleaned; existing development databases were not accessed. Signal
+interruption is covered with actual signals and mocked Docker, not live-daemon
+fault injection. Candidate long-name checks pass in both themes at 1440/768/390;
+Recruiter/Admin theme/viewport regressions pass. API-assisted operations and
+coverage gaps are explicitly documented in docs/E2E_ISOLATION.md.
+
+Only the reviewed E2E milestone and selected documentation hunks are eligible for
+the requested local commit. Unrelated local operations history remains unstaged.
+Independent exact-index verification and commit identities are reported at
+delivery without changing the tested tree. No push, merge, deployment or PR edit.
+
+## Critical E2E isolation remediation — 2026-11-11
+
+**PASS for local remediation; supersedes the isolation FAIL below.** Replaced
+released fixed-port probes with continuously held per-run sockets inherited by
+owned WSGI/Vite services. Readiness now verifies HMAC challenge, run, role and
+child PID. Vite websocket transport shares its owned HTTP socket. SIGINT/SIGTERM
+are deferred across Docker creation/tracking; exact-label discovery, ID rechecks,
+repeated-signal handling and idempotent cleanup preserve the original failure.
+No production/API/schema/authentication/dependency or existing database changes.
+
+Frontend lint, 62 tests / 17 files and build PASS; backend Ruff, six-file format
+check and 16 pure guard tests PASS. Final standalone runner: 150 PostgreSQL-backed
+tests and Chromium 1/1 PASS. Final concurrent command: both runners pass 150 backend
+tests and Chromium 1/1, with actual peer service/cluster/credential rejection.
+Candidate, Recruiter and Admin Light/Dark switching, rendered colors, persistence
+and responsive checks PASS; zero browser errors. Two existing Ant Design warning
+classes are counted separately (15 occurrences/scenario). All owned containers,
+listeners and private/cache temporary storage cleaned; unrelated stopped welcome
+container preserved. POSIX-only; SIGKILL/host loss/unreachable Docker recovery and
+hosted CI remain limitations. Exact commands, identities, earlier failures and
+files: docs/E2E_ISOLATION.md. Unrelated operations notes preserved. Branch/HEAD
+unchanged, index empty; 11 modified tracked / 11 untracked individual files.
+No staging, commit, push, merge, rebase, deployment or PR #1 modification.
+
+## Final independent E2E commit gate — 2026-11-11
+
+**FAIL; no commit.** Static review found released application-port probes and
+unverified HTTP readiness allow concurrent runners to target another API/database.
+Per the explicit serious-isolation-defect stop rule, no Docker mutation suite,
+staging or snapshot verification proceeded. Docker daemon available (29.7.2).
+Frontend lint, 62 tests / 17 files and build PASS; backend Ruff and 3 pure guard
+tests PASS. Both-theme Candidate regression remains unverified in this audit.
+Earlier runtime passes are historical and do not satisfy this final gate.
+No source/API/schema/production configuration or existing database changes;
+unrelated operations notes preserved. Branch/HEAD unchanged, index empty.
+Evidence, cleanup interruption risk, commands and next steps: docs/E2E_ISOLATION.md.
+
 **Status:** Private resumes and admin moderation implemented locally; production deployment remains unresolved
 **Product version:** 0.1.0 (pre-release planning baseline)  
 **Last updated:** 2026-11-07
@@ -539,3 +597,50 @@ Final credential/whitespace/snapshot checks pass; executable source unchanged.
 Local commit: `feat(admin): finalize responsive admin workspace`, on
 `feat/admin-workspace-final`; next owner-selected milestone may proceed.
 No publishing actions or production-readiness certification.
+
+## Git integration and disposable E2E preparation — 2026-11-11
+
+Candidate 84b3381 → Recruiter bd98fc9 → Admin ca9a7c3 are already integrated
+linearly at current HEAD on `feat/admin-workspace-final`; no integration performed.
+Cached refs only; live divergence/PR #1 state unverified. Replaced the browser
+runner's devjobs_test writes with an owned temporary Docker PostgreSQL cluster,
+explicit E2E settings and independent cluster identity checks before migrations.
+Normal login throttle retained; process-only generated credentials and temporary
+private storage. Updated browser CI to use the same owned-container runner.
+No API/schema/business logic change. Existing operations notes preserved.
+
+Frontend lint, 62 tests/17 files and build PASS; backend Ruff, 3 pure safety tests
+and non-persistent development system check PASS. Full backend DB suite skipped.
+Browser execution FAILS CLOSED because Docker is unavailable; no existing database
+access, migrations or fixture writes. Runtime verification and coverage gaps remain
+blocking acceptance. See `docs/E2E_ISOLATION.md` for integration map, exact commands,
+architecture, cleanup and limitations. No environment-file changes, staging,
+commits, remote operations, deployment or PR modification; changes remain unstaged.
+Final migration consistency check with explicit in-memory configuration and
+`git diff --check` PASS; direct Playwright invocation without E2E mode rejected as
+expected. Final index empty: 7 modified tracked and 4 untracked paths.
+
+
+## Docker-isolated E2E runtime completion — 2026-11-11
+
+**PASS**: supersedes the Docker-unavailable blocker above. Docker Desktop 29.7.2
+on ARM64 ran the owned PostgreSQL 17.5 tmpfs container with generated credentials,
+loopback random port and independent SQL cluster identity before migrations.
+Full backend suite **137 PASS**, Django system/migration checks PASS; expanded
+Chromium three-role scenario **1 PASS / 0 FAIL (26.8s)**. Candidate and Recruiter
+mutation workflows and supported Admin user/job/company moderation, reversals,
+reason validation and authorization checks pass. Unsupported Admin application
+management was not added. Frontend lint, 62 tests/17 files and build PASS; pure
+safety 3 tests, Ruff and whitespace PASS. Existing JSDOM/bundle advisories remain.
+
+Fixed verified long-name Candidate header overflow, runner TIME_WAIT port probe,
+and new Admin test selectors. Backend pytest now accepts independently verified
+E2E settings in the owned cluster; legacy target policy remains strict. Removed
+inherited DB/libpq configuration and disabled dotenv for runner processes; added
+SIGTERM cleanup. No API/schema/production/authentication-policy/dependency changes.
+All runner containers/private temporary storage removed; unrelated stopped Docker
+welcome container preserved. CI reviewed, not remotely executed. Exact commands,
+identity evidence, failed attempts, coverage and limits: `docs/E2E_ISOLATION.md`.
+Testing strategy updated; unrelated local operations notes preserved. Original
+branch/HEAD retained; index empty. No staging, commit, push, merge, rebase, deploy,
+PR modification or mutation of existing development databases.

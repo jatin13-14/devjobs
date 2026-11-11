@@ -19,13 +19,3 @@ if parsed.hostname != "127.0.0.1" or parsed.port != 5433 or parsed.path.lstrip("
     )
 
 DATABASES["default"]["TEST"] = {"NAME": "test_devjobs_test"}
-
-
-def is_expected_database_identity(database, port, version, test_name="test_devjobs_test"):
-    """Validate server identity independently of connection URL validation above."""
-    return (
-        database == "devjobs_test"
-        and port == 5433
-        and version.split()[0] == "17.5"
-        and test_name == "test_devjobs_test"
-    )

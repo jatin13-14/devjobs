@@ -34,13 +34,13 @@ class JwtTokenRateConfigurationTests(SimpleTestCase):
 
 class PostgreSQLIdentityTests(SimpleTestCase):
     def test_exact_version_and_container_build_suffix_are_supported(self):
-        from config.settings.test import is_expected_database_identity
+        from config.test_database_identity import is_expected_database_identity
 
         for version in ("17.5", "17.5 (Debian build)"):
             self.assertTrue(is_expected_database_identity("devjobs_test", 5433, version))
 
     def test_other_servers_ports_databases_and_test_targets_are_rejected(self):
-        from config.settings.test import is_expected_database_identity
+        from config.test_database_identity import is_expected_database_identity
 
         for database, port, version, test_name in (
             ("devjobs_test", 5432, "17.5", "test_devjobs_test"),

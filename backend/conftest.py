@@ -1,17 +1,19 @@
 """Validate the PostgreSQL target before pytest-django creates its test database."""
 
+import os
+
 import pytest
 from django.conf import settings
 from django.db import OperationalError, connection
 from django.test.utils import setup_databases, teardown_databases
 
-from config.settings.test import is_expected_database_identity
+from config.test_database_identity import is_expected_database_identity
 
 
 def pytest_collection_modifyitems(items):
-    if settings.SETTINGS_MODULE != "config.settings.test":
+    if settings.SETTINGS_MODULE not in {"config.settings.test", "config.settings.e2e"}:
         pytest.exit(
-            "Automated tests must use config.settings.test; development settings are not allowed.",
+            "Automated tests require strict test settings or verified disposable E2E settings.",
             returncode=2,
         )
     for item in items:
@@ -20,6 +22,14 @@ def pytest_collection_modifyitems(items):
 
 @pytest.fixture(scope="session")
 def django_db_setup(django_db_blocker):
+    if settings.SETTINGS_MODULE == "config.settings.e2e":
+        from config.e2e_safety import verify_connection
+
+        with django_db_blocker.unblock():
+            verify_connection(connection, os.environ)
+        # Already migrated by the owned runner; never create/retain a host test DB.
+        yield
+        return
     config = settings.DATABASES["default"]
     if connection.vendor != "postgresql":
         pytest.exit("Automated tests require PostgreSQL; SQLite is not supported.", returncode=2)

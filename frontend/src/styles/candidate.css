@@ -8,8 +8,10 @@
 .candidate-nav-link:hover { background:var(--color-accent-soft); }
 .candidate-sidebar .active { background:linear-gradient(110deg,#6945ff,#4329eb); color:white; }
 .candidate-header { min-height:80px; margin-left:240px; padding:16px 28px; display:flex; gap:22px; align-items:center; background:var(--color-surface); border-bottom:1px solid var(--color-border); }
-.candidate-search { max-width:850px; margin-right:auto; }
-.candidate-account { height:auto; display:flex; align-items:center; gap:10px; font-weight:650; }
+.candidate-search { min-width:0; max-width:850px; margin-right:auto; }
+.candidate-account { min-width:0; max-width:45%; height:auto; display:flex; align-items:center; gap:10px; font-weight:650; }
+.candidate-account > span:not(.ant-avatar):not(.anticon) { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.candidate-account .ant-avatar,.candidate-account .anticon { flex-shrink:0; }
 .candidate-mobile-brand,.candidate-bottom-nav { display:none; }
 .candidate-main { margin-left:240px; min-width:0; }
 .candidate-main .container { width:calc(100% - 56px); max-width:none; }

@@ -1,14 +1,37 @@
 import { test, expect } from '@playwright/test';
 
-const api = 'http://127.0.0.1:8011/api/v1';
-const password = 'Synthetic-browser-pass-781!';
+const api = `${process.env.E2E_BACKEND_URL}/api/v1`;
+const password = process.env.E2E_FIXTURE_PASSWORD;
 const run = process.env.E2E_RUN_ID;
 async function inspectWorkspace(page, role) {
   await expect(page.getByRole('navigation', { name: `${role} workspace` })).toBeVisible();
-  for (const width of [1440, 768, 390]) {
-    await page.setViewportSize({ width, height: 960 });
-    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `/tmp/devjobs-redesign-screenshots/${role}-${width}.png`, fullPage: true });
+  const backgrounds = {
+    candidate: { light: 'rgb(249, 250, 255)', dark: 'rgb(11, 17, 32)' },
+    recruiter: { light: 'rgb(251, 252, 255)', dark: 'rgb(7, 27, 30)' },
+    admin: { light: 'rgb(248, 250, 252)', dark: 'rgb(11, 18, 32)' },
+  };
+  const shell = page.locator(`.${role}-shell`);
+  for (const mode of ['light', 'dark']) {
+    if (await shell.evaluate((element, selected) => element.classList.contains(selected), `${role}-${mode}`)) {
+      await page.getByRole('button', { name: `Switch to ${mode === 'light' ? 'dark' : 'light'} mode` }).click();
+    }
+    await page.getByRole('button', { name: `Switch to ${mode} mode` }).click();
+    await expect(shell).toHaveClass(new RegExp(`${role}-${mode}`));
+    await expect(shell).toHaveCSS('background-color', backgrounds[role][mode]);
+    expect(await page.evaluate((key) => localStorage.getItem(key), `devjobs.${role}.theme`)).toBe(mode);
+    // Reload checks stored preference and actual rendered styles, not button text.
+    await page.reload();
+    await expect(shell).toHaveClass(new RegExp(`${role}-${mode}`));
+    await expect(shell).toHaveCSS('background-color', backgrounds[role][mode]);
+    for (const other of ['candidate', 'recruiter', 'admin'].filter((value) => value !== role)) {
+      await expect(page.locator(`.${other}-shell`)).toHaveCount(0);
+    }
+    for (const width of [1440, 768, 390]) {
+      await page.setViewportSize({ width, height: 960 });
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      await page.screenshot({ path: `/tmp/devjobs-redesign-screenshots/${run}/${role}-${mode}-${width}.png`, fullPage: true });
+    }
+    await page.setViewportSize({ width: 1440, height: 960 });
   }
   await page.setViewportSize({ width: 1440, height: 960 });
 }
@@ -27,7 +50,7 @@ async function register(page, role) {
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 960 });
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await page.screenshot({ path: `/tmp/devjobs-redesign-screenshots/register-${role}-${width}.png`, fullPage: true });
+    await page.screenshot({ path: `/tmp/devjobs-redesign-screenshots/${run}/register-${role}-${width}.png`, fullPage: true });
   }
   await page.setViewportSize({ width: 1440, height: 960 });
   await page.getByLabel('Full name').fill(`Synthetic ${role} ${run}`);
@@ -48,10 +71,22 @@ async function call(page, method, path, data) {
 }
 
 test('candidate, recruiter and administrator workflow with private access enforcement', async ({ browser }) => {
+  test.setTimeout(120000);
   expect(run, 'Use backend/run_browser.py to enforce the dedicated database').toBeTruthy();
   const browserErrors = [];
+  const developmentWarnings = [];
+  const knownWarnings = new Set([
+    'Warning: Instance created by `useForm` is not connected to any Form element. Forget to pass `form` prop?',
+    "Warning: [antd: message] Static function can not consume context like dynamic theme. Please use 'App' component instead.",
+  ]);
+  function captureConsole(message) {
+    if (message.type() !== 'error') return;
+    if (knownWarnings.has(message.text())) developmentWarnings.push(message.text());
+    else browserErrors.push(message.text().replace(/([?&]token=)[^&\s'"<>]+/g, '$1[redacted]'));
+  }
   const candidateContext = await browser.newContext(); const candidate = await candidateContext.newPage();
   candidate.on('pageerror', (error) => browserErrors.push(error.message));
+  candidate.on('console', captureConsole);
   await register(candidate, 'candidate');
   await expect(candidate.getByRole('heading', { name: 'Find Your Next Opportunity' })).toBeVisible();
   await inspectWorkspace(candidate, 'candidate');
@@ -81,6 +116,7 @@ test('candidate, recruiter and administrator workflow with private access enforc
 
   const recruiterContext = await browser.newContext(); const recruiter = await recruiterContext.newPage();
   recruiter.on('pageerror', (error) => browserErrors.push(error.message));
+  recruiter.on('console', captureConsole);
   await register(recruiter, 'recruiter');
   await inspectWorkspace(recruiter, 'recruiter');
   await recruiter.goto('/recruiter/profile');
@@ -103,6 +139,8 @@ test('candidate, recruiter and administrator workflow with private access enforc
   await recruiter.getByText('ACTIVE', { exact: true }).last().click();
   await expect(recruiter.getByText('Synthetic member · MEMBER · ACTIVE')).toBeVisible();
   const memberContext = await browser.newContext(); const memberPage = await memberContext.newPage();
+  memberPage.on('pageerror', (error) => browserErrors.push(error.message));
+  memberPage.on('console', captureConsole);
   await login(memberPage, `e2e-member-${run}@example.test`);
   await memberPage.goto(`/recruiter/companies/${companyId}`);
   await expect(memberPage.getByLabel('name', { exact: true })).toBeDisabled();
@@ -118,6 +156,7 @@ test('candidate, recruiter and administrator workflow with private access enforc
   await expect(recruiter).toHaveURL(/recruiter\/jobs\/[0-9a-f-]+\?/);
   const job = { id: new URL(recruiter.url()).pathname.split('/').pop(), title: `Synthetic Engineer ${run}` };
   await recruiter.goto(`/recruiter/jobs/${job.id}?company=${companyId}`);
+  await call(recruiter, 'patch', `/jobs/${job.id}/`, { description: 'Synthetic edited browser test role' });
   await recruiter.getByRole('button', { name: 'Publish', exact: true }).click();
   await recruiter.getByRole('button', { name: 'OK', exact: true }).click();
   await expect(recruiter.getByText('JOB PREVIEW · Published')).toBeVisible();
@@ -132,9 +171,24 @@ test('candidate, recruiter and administrator workflow with private access enforc
   await expect(candidate.getByRole('heading', { name: 'My applications' })).toBeVisible();
   const applications = await call(recruiter, 'get', `/jobs/${job.id}/applications/`);
   const application = applications.results[0];
+  const candidateAuth = await auth(candidate);
+  const duplicate = await candidate.request.post(`${api}/jobs/${job.id}/applications/`, {
+    data: { cover_letter: 'Synthetic duplicate' }, headers: { Authorization: `Bearer ${candidateAuth.access}` },
+  });
+  expect(duplicate.status()).toBe(400);
+  const forbiddenAdmin = await candidate.request.get(`${api}/admin/overview/`, {
+    headers: { Authorization: `Bearer ${candidateAuth.access}` },
+  });
+  expect(forbiddenAdmin.status()).toBe(403);
+  const anonymousDenied = await candidate.request.get(`${api}/candidates/me/applications/`);
+  expect(anonymousDenied.status()).toBe(401);
   const memberAuth = await auth(memberPage);
   const memberDenied = await memberPage.request.get(`${api}/jobs/${job.id}/applications/${application.id}/resume/`, { headers: { Authorization: `Bearer ${memberAuth.access}` } });
   expect(memberDenied.status()).toBe(403);
+  const statusDenied = await memberPage.request.patch(`${api}/jobs/${job.id}/applications/${application.id}/status/`, {
+    data: { status: 'REVIEWING' }, headers: { Authorization: `Bearer ${memberAuth.access}` },
+  });
+  expect(statusDenied.status()).toBe(403);
   await memberContext.close();
   await recruiter.goto(`/recruiter/jobs/${job.id}/applicants/${application.id}?company=${companyId}`);
   const download = recruiter.waitForEvent('download');
@@ -151,23 +205,61 @@ test('candidate, recruiter and administrator workflow with private access enforc
   const denied = await recruiter.request.get(`${api}/jobs/${job.id}/applications/${application.id}/resume/`, { headers: { Authorization: `Bearer ${access}` } });
   expect([403, 404]).toContain(denied.status());
 
+  await call(recruiter, 'post', `/jobs/${job.id}/close/`);
+
   const adminContext = await browser.newContext(); const admin = await adminContext.newPage();
   admin.on('pageerror', (error) => browserErrors.push(error.message));
+  admin.on('console', captureConsole);
   await login(admin, process.env.E2E_ADMIN_EMAIL, process.env.E2E_ADMIN_PASSWORD);
-  await expect(admin.getByRole('heading', { name: 'Platform administration' })).toBeVisible();
+  await expect(admin.getByRole('heading', { name: 'Admin Dashboard' })).toBeVisible();
   await inspectWorkspace(admin, 'admin');
+  // Exercise every supported mutable moderation resource, including reversal.
+  for (const [resource, search] of [
+    ['candidates', `e2e-candidate-${run}@example.test`],
+    ['recruiters', `e2e-member-${run}@example.test`],
+    ['jobs', job.title],
+  ]) {
+    await admin.goto(`/admin?section=${resource}`);
+    await admin.getByLabel('Search moderation records').fill(search);
+    await admin.getByLabel('Search moderation records').press('Enter');
+    const row = admin.getByRole('row').filter({ hasText: resource === 'jobs' ? job.title : resource === 'candidates' ? `Synthetic candidate ${run}` : 'Synthetic member' });
+    await row.getByRole('button', { name: 'Inspect', exact: true }).click();
+    await expect(admin.getByRole('dialog', { name: 'Record details' })).toBeVisible();
+    await admin.getByRole('dialog', { name: 'Record details' }).locator('.ant-modal-footer').getByRole('button', { name: 'Close', exact: true }).click();
+    for (const restricted of [true, false]) {
+      await row.getByRole('button', { name: 'Moderate', exact: true }).click();
+      await expect(admin.getByRole('button', { name: 'OK', exact: true })).toBeDisabled();
+      await admin.getByRole('textbox', { name: 'Moderation reason' }).fill('Synthetic reversible moderation');
+      await admin.getByRole('button', { name: 'OK', exact: true }).click();
+      await expect(row.getByText(restricted ? 'Restricted' : resource === 'jobs' ? 'CLOSED' : 'Active', { exact: true })).toBeVisible();
+    }
+  }
+  await admin.goto('/admin?section=companies');
   await admin.getByLabel('Search moderation records').fill(`Synthetic Company ${run}`);
   await admin.getByLabel('Search moderation records').press('Enter');
   await admin.getByRole('row').filter({ hasText: `Synthetic Company ${run}` }).getByRole('button', { name: 'Moderate', exact: true }).click();
   await admin.getByRole('textbox', { name: 'Moderation reason' }).fill('Synthetic browser suspension');
   await admin.getByRole('button', { name: 'OK', exact: true }).click();
   await expect(admin.getByRole('row').filter({ hasText: `Synthetic Company ${run}` }).getByText('Restricted', { exact: true })).toBeVisible();
+  for (const resource of ['companies', 'recruiters', 'candidates', 'jobs', 'history']) {
+    const listing = await call(admin, 'get', `/admin/${resource}/`);
+    expect(Array.isArray(listing.results)).toBe(true);
+  }
   const blocked = await recruiter.request.post(`${api}/jobs/${job.id}/publish/`, { headers: { Authorization: `Bearer ${access}` } });
   expect(blocked.status()).toBe(403);
-  await candidate.getByRole('button', { name: 'Log out' }).click();
+  await candidate.goto('/candidate/resume');
+  const candidateDownload = candidate.waitForEvent('download');
+  await candidate.getByRole('button', { name: 'Download resume' }).click();
+  expect((await candidateDownload).suggestedFilename()).toContain('.pdf');
+  await candidate.getByRole('button', { name: 'Remove resume', exact: true }).click();
+  await candidate.getByRole('button', { name: 'Remove', exact: true }).click();
+  await expect(candidate.getByRole('status')).toHaveText('No resume uploaded.');
+  await candidate.getByRole('button', { name: 'Open user menu' }).click();
+  await candidate.getByRole('menuitem', { name: /Log out/i }).click();
   await candidate.reload();
   await expect(candidate).toHaveURL(/login/);
   expect(await candidate.evaluate(() => localStorage.getItem('devjobs.auth'))).toBeNull();
+  console.log(`Existing Ant Design development warnings: ${developmentWarnings.length}; browser errors: ${browserErrors.length}`);
   expect(browserErrors).toEqual([]);
   await candidateContext.close(); await recruiterContext.close(); await adminContext.close();
 });
