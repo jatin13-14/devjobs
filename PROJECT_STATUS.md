@@ -786,3 +786,59 @@ an already verified tree. Unrelated operations notes remain outside the index.
 Redis loss can reset quotas; noeviction, memory/availability monitoring, sanitized
 proxy hops, synchronized clocks and shared-NAT limits remain operational gates.
 No hosted CI, push, merge, deployment, PR #1 edit or Milestone 2 work.
+
+## Milestone 2, Stage 1 — M-05 application/admin N+1 queries — 2026-11-12
+
+**PASS locally.** Application lists now select job/company, candidate/user and
+optional resume, and prefetch ordered CandidateSkill/Skill objects consumed by
+the serializer. This removes per-row user/resume/skill reads and recruiter skill
+prefetch bypass. Admin candidate/recruiter collections join both optional profiles;
+nullable joins remain outside moderation mutation locks. No admin application
+collection exists; no endpoint was invented. Detail responses have fixed query
+costs and retain their querysets. No API/schema/dependency/authorization/auth/
+JWT/throttle/production-settings change; pagination, ordering and privacy retained.
+
+Measured SQL at 1/5/20 rows: candidate applications 6/18/63 -> 4/4/4; recruiter
+applicants 12/24/69 -> 8/8/8; admin candidates 3/7/22 -> 2/2/2; admin recruiters
+4/12/42 -> 2/2/2. Three growth tests fail on original code and pass after the fix.
+Five new HTTP tests cover query growth, values, skills, resume availability,
+missing profiles, pagination/order/no duplicates, isolation and role restrictions.
+No latency claim; skill payload size and fixed detail costs remain limitations.
+
+Targeted applications/query 12 and moderation 8 PASS. Full disposable PostgreSQL
+164 PASS / 8 Redis-only skipped; standalone and both concurrent runs repeat
+164 PASS / 8 skipped and Chromium 1/1 each, zero browser errors. Both concurrent
+peer ownership rejections PASS. Ruff, three-file format, system/migration checks,
+16 runner safety tests, frontend lint/62 tests/build and OpenAPI 39 paths/55
+operations PASS. Existing non-failing warnings retained; hosted CI not run.
+Exact commands, before/after evidence and coverage: docs/TESTING_STRATEGY.md.
+
+All seven owned PostgreSQL tmpfs containers removed; all 13 logged verification
+ports have no listeners. Independently verified disposable clusters only;
+existing development DBs and devjobs_test untouched. Prior operations-note bytes
+preserved; LOCAL_DEVELOPMENT.md unchanged by this task. Five task files only;
+no staging, commit, push, merge, deployment or PR #1 modification. Starting/ending
+branch feat/admin-workspace-final, HEAD 77625e0a5f7c70314e8d833b0069e9a2fd44c23c;
+committed tree 3d63ab588b8e4fe5c9f88831055b9aa23e22abf5 unchanged. M-06/M-07 and
+Stage 2 not started.
+
+## Independent M-05 audit and local commit gate — 2026-11-12
+
+Independent code/security/SQL review PASS: ordered prefetched skills are consumed,
+optional one-to-one joins preserve missing records, no to-many pagination joins,
+no premature evaluation, and authorization/response fields remain unchanged.
+Independent disposable PostgreSQL HTTP measurements reproduce every before/after
+count above; all three growth tests fail against a separate HEAD export and pass
+with the implementation. Five new tests plus existing application/moderation
+coverage preserve role/company/candidate isolation, resume privacy and pagination.
+Working verification PASS: applications/query 12, moderation 8, full 164 passed /
+8 Redis-only skipped; Ruff, three-file formatting, 16 runner safety tests, Django
+checks/migration consistency, OpenAPI 39 paths/55 operations, frontend lint/62
+tests/build, standalone Chromium 1/1 and concurrent Chromium 1/1 each with both
+peer isolation checks. No serious defect found; no code corrections required.
+
+Only five milestone paths are eligible for selective staging; unrelated operations
+notes remain outside the index. Exact-index export repeats the complete gate;
+results, tree and single local commit identity are reported at delivery without
+editing the verified snapshot. No hosted CI claim; no push/merge/deploy/PR edit.
+Skill payload size and fixed detail costs remain; M-06/M-07/Stage 2 not started.

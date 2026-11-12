@@ -95,6 +95,10 @@ class OverviewView(AdminView):
 class CollectionView(AdminView):
     def get(self, request, kind):
         qs = objects(kind)
+        if kind in ("candidates", "recruiters"):
+            # representation checks both reverse one-to-one relations, including
+            # missing profiles. Keep nullable joins away from mutation row locks.
+            qs = qs.select_related("candidate_profile", "recruiter_profile")
         search = request.query_params.get("search", "").strip()
         if search:
             field = "name" if kind == "companies" else "title" if kind == "jobs" else "email"

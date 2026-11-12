@@ -1,5 +1,6 @@
 from django.core.exceptions import PermissionDenied
 from django.db import IntegrityError, transaction
+from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import serializers, status
@@ -11,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import User
-from apps.candidates.models import CandidateProfile
+from apps.candidates.models import CandidateProfile, CandidateSkill
 from apps.companies.models import Company, CompanyMembership
 from apps.companies.services import authorize_company_operation
 from apps.jobs.models import Job
@@ -24,6 +25,19 @@ class ApplicationPagination(PageNumberPagination):
     page_size = 20
     page_size_query_param = "page_size"
     max_page_size = 100
+
+
+def application_list_queryset():
+    """Load only the relationships used by application list serialization."""
+    return Application.objects.select_related(
+        "job__company", "candidate__user", "candidate__resume"
+    ).prefetch_related(
+        Prefetch(
+            "candidate__candidate_skills",
+            queryset=CandidateSkill.objects.select_related("skill").order_by("skill__name"),
+            to_attr="application_skills",
+        )
+    )
 
 
 class ApplicationSerializer(serializers.ModelSerializer):
@@ -47,15 +61,20 @@ class ApplicationSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_resume_available(self, obj):
-        return (obj.status != Application.Status.WITHDRAWN
-                and obj.candidate.user.is_active
-                and hasattr(obj.candidate, "resume"))
+        return (
+            obj.status != Application.Status.WITHDRAWN
+            and obj.candidate.user.is_active
+            and hasattr(obj.candidate, "resume")
+        )
 
     def get_job(self, obj):
         return {"id": str(obj.job_id), "title": obj.job.title, "company": obj.job.company.name}
 
     def get_candidate(self, obj):
         profile = obj.candidate
+        skills = getattr(profile, "application_skills", None)
+        if skills is None:
+            skills = profile.candidate_skills.select_related("skill").order_by("skill__name")
         return {
             "full_name": profile.full_name,
             "professional_headline": profile.professional_headline,
@@ -63,11 +82,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
             "city": profile.city,
             "years_of_experience": profile.years_of_experience,
             "current_designation": profile.current_designation,
-            "skills": list(
-                profile.candidate_skills.select_related("skill")
-                .order_by("skill__name")
-                .values_list("skill__name", flat=True)
-            ),
+            "skills": [item.skill.name for item in skills],
         }
 
 
@@ -125,9 +140,7 @@ class CandidateApplicationsView(ListAPIView):
 
     def get_queryset(self):
         candidate = _candidate(self.request.user)
-        return Application.objects.filter(candidate=candidate).select_related(
-            "job", "job__company", "candidate"
-        )
+        return application_list_queryset().filter(candidate=candidate)
 
 
 class CandidateApplicationDetailView(APIView):
@@ -182,11 +195,7 @@ class JobApplicationsView(ListAPIView):
     def get_queryset(self):
         job = get_object_or_404(Job.objects.select_related("company"), pk=self.kwargs["job_id"])
         _authorize_job(self.request.user, job)
-        return (
-            Application.objects.filter(job=job)
-            .select_related("job", "job__company", "candidate")
-            .prefetch_related("candidate__candidate_skills__skill")
-        )
+        return application_list_queryset().filter(job=job)
 
     def post(self, request, job_id):
         candidate = _candidate(request.user)

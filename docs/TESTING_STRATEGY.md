@@ -306,3 +306,137 @@ boundary bursts, clock skew, NAT capacity and private Django adapter compatibili
 remain limitations; required production noeviction/monitoring/ACL gates are in
 API_CONVENTIONS.md. Production errors retain generic 500; a controlled 503 needs
 an explicit contract change. No deployment architecture change was made.
+
+## Milestone 2, Stage 1 — M-05 query growth — 2026-11-12
+
+Scope: existing candidate application and recruiter applicant lists, and admin
+candidate/recruiter moderation collections. There is no admin application
+moderation collection in this API. Admin company/job lists already use scalar
+fields/company joins; history serializes the administrator foreign-key ID without
+loading its user. Overview uses four counts. Application detail, creation and
+status responses serialize one application, so their fixed related-object reads
+are not N+1 list growth; their querysets and authorization remain unchanged.
+
+Original application lists selected job/company/candidate but loaded candidate
+user, optional resume and skills separately per result. Recruiter lists also ran
+two wasted skill prefetch queries: serializer order_by/values_list bypassed the
+cache. Candidate lists repeated these reads even for the same candidate.
+Admin representation tried candidate_profile and then recruiter_profile, causing
+one extra query per candidate or two per recruiter (including absent relations).
+
+Application lists now join job/company, candidate/user and optional resume and
+use one ordered CandidateSkill/Skill Prefetch with to_attr. Serializer iteration
+consumes that list; single-object callers retain an ordered queryset fallback.
+Database skill ordering, including collation, is retained. Admin collection GET
+joins both optional profiles, preserving missing-profile fallback. These nullable
+joins are deliberately kept out of moderation select_for_update mutation paths.
+To-many relationships are prefetched, not joined, preserving pagination counts
+and preventing duplicate application rows. Page size 20 / maximum 100 unchanged.
+
+Actual HTTP SQL measurements (forced authentication; fixture creation excluded):
+
+| Endpoint | Records | Before | After |
+| --- | ---: | ---: | ---: |
+| Candidate applications | 1 | 6 | 4 |
+| Candidate applications | 5 | 18 | 4 |
+| Candidate applications | 20 | 63 | 4 |
+| Recruiter applicants | 1 | 12 | 8 |
+| Recruiter applicants | 5 | 24 | 8 |
+| Recruiter applicants | 20 | 69 | 8 |
+| Admin candidates | 1 | 3 | 2 |
+| Admin candidates | 5 | 7 | 2 |
+| Admin candidates | 20 | 22 | 2 |
+| Admin recruiters | 1 | 4 | 2 |
+| Admin recruiters | 5 | 12 | 2 |
+| Admin recruiters | 20 | 42 | 2 |
+
+Candidate totals comprise profile lookup, count, joined page, skill prefetch.
+Recruiter totals additionally include job lookup and existing recruiter/user/
+company/membership authorization reads. Admin totals are count plus joined page.
+Before: application skill/user/resume lookups each occur N times; recruiter has
+two additional prefetch queries. After: one skill query per application page,
+zero separate per-row user/resume/profile reads. Query tests print table-specific
+FROM counts for inspecting these patterns; joined relations are in the page SQL.
+
+`backend/apps/applications/query_tests.py` adds five PostgreSQL HTTP tests:
+three growth guards at 1/5/20 rows, visibility/pagination/permissions, and missing
+admin profiles/state filtering. Distinct recruiter candidates/users/skills/resumes
+and candidate jobs/companies prevent identity reuse from hiding defects. Growth
+is allowed at most one SQL query across sizes to tolerate a fixed setup query;
+it cannot admit per-row reads. All three growth tests failed on original code,
+and passed after optimization. The initial admin baseline stopped at its first
+assertion; the corrected baseline gathers both admin collections before asserting.
+Other checks cover field values, sorted skills, resume availability/missing/
+withdrawn/inactive cases, duplicate-free ordering across pages, candidate isolation,
+outsider/MEMBER denial, company ADMIN access, admin denial and private-key absence.
+Existing application/moderation tests cover detail/status/resume permissions.
+
+Verification commands use only independently verified owned PostgreSQL 17 tmpfs
+clusters. A temporary helper `/tmp/devjobs-m2-measure.py` copies the committed
+runner's lifecycle/identity guards, fixes ROOT to this checkout and runs just
+query_tests.py after migration/checks. `/tmp/devjobs-m2-targeted.py` uses the same
+guards, running applications/api_tests.py plus applications/query_tests.py,
+moderation/tests.py, then the full suite. Neither helper is a repository artifact.
+Logs: `/tmp/devjobs-m2-{before-all,after,targeted,browser,concurrent}.log`.
+No latency measurements or latency improvement claim. Query count is bounded by
+page size; skill payload/memory still grows with skills per candidate. Single
+object reads retain fixed costs; no unrelated endpoint optimization or M-06/M-07.
+
+Final verification (all commands from repository root unless noted):
+
+| Command | Result |
+| --- | --- |
+| `backend/.venv/bin/python /tmp/devjobs-m2-measure.py` (before / after) | Original: 3 growth tests FAIL as expected; optimized: 3 PASS; all 12 measurement rows above verified |
+| `backend/.venv/bin/python /tmp/devjobs-m2-targeted.py` | PASS: applications/query 12, moderation 8, full 164 passed / 8 Redis-only skipped (39.98s); Django check and migration consistency PASS |
+| `backend/.venv/bin/ruff check backend` | PASS |
+| `backend/.venv/bin/ruff format --check backend/apps/applications/api.py backend/apps/applications/query_tests.py backend/apps/moderation/api.py` | PASS, 3 files |
+| `cd backend && .venv/bin/python -m unittest config.test_e2e_safety_unit config.test_e2e_runtime_unit` | PASS, 16 tests, before database-backed execution |
+| `cd frontend && npm run lint && npm test && npm run build` | PASS, 62 tests / 17 files |
+| `/tmp/devjobs-m1-schema-tools/bin/python scripts/validate_openapi.py` | PASS, 39 paths / 55 operations, six serializer field sets and three negative controls |
+| `backend/.venv/bin/python backend/run_browser.py` | PASS: full 164 passed / 8 skipped (41.00s); Chromium 1/1 (32.7s scenario), zero browser errors; cleanup PASS |
+| `backend/.venv/bin/python backend/run_browser_concurrent.py` | PASS: both full suites 164 passed / 8 skipped (41.25s / 41.55s), both peer ownership rejections, Chromium 1/1 each (32.2s / 32.3s), zero browser errors; cleanup PASS |
+| `docker ps -aq --filter label=devjobs.e2e` | PASS, empty after all runs; seven owned measurement/verification containers removed |
+| `lsof -nP` with `-sTCP:LISTEN` on all 13 logged verification ports | PASS, empty / exit 1 (no listeners) |
+| `git diff --check` | PASS |
+
+Safety review before DB-backed execution verified explicit environment/URL checks,
+owned tmpfs containers, independently compared pg_control_system identity, removed
+inherited DATABASE_URL/PG variables and disabled dotenv. Existing development DBs
+and devjobs_test were not accessed. Initial sandbox safety run could not bind
+loopback sockets; approved rerun passed all 16 tests. Baseline failure was expected;
+no security controls were disabled. Existing JSDOM/Ant Design, NO_COLOR/Babel and
+bundle-size advisories remain non-failing. Redis-only tests were skipped because
+this stage does not provision Redis or alter throttles. No hosted CI claim.
+
+Task files: applications/api.py, applications/query_tests.py, moderation/api.py,
+this document and append-only PROJECT_STATUS.md. Existing LOCAL_DEVELOPMENT.md
+operations edits remain byte-for-byte untouched; prior PROJECT_STATUS.md bytes
+remain an unchanged prefix. No migrations, dependencies, API/auth/permission,
+production settings or secrets changed. Starting/ending branch/HEAD:
+feat/admin-workspace-final / 77625e0a5f7c70314e8d833b0069e9a2fd44c23c.
+Index remains empty. Nothing staged, committed, pushed, merged, deployed or changed
+on PR #1. M-06/M-07 and Stage 2 were not started.
+
+### Independent M-05 audit — 2026-11-12
+
+Working-tree commands independently repeated (all PASS unless stated):
+- `backend/.venv/bin/ruff check backend`
+- `backend/.venv/bin/ruff format --check backend/apps/applications/api.py backend/apps/applications/query_tests.py backend/apps/moderation/api.py`
+- `cd backend && .venv/bin/python -m unittest config.test_e2e_safety_unit config.test_e2e_runtime_unit` (16)
+- `backend/.venv/bin/python /tmp/devjobs-m2-targeted.py` (12 applications/query, 8 moderation, full 164 passed/8 Redis-only skipped; system/migration checks)
+- `backend/.venv/bin/python /tmp/devjobs-independent-m2-measure.py` (3 growth tests, all optimized counts reproduced using `-s`)
+- `backend/.venv/bin/python /tmp/devjobs-independent-m2-baseline.py` (expected FAIL: all 3 growth guards on separate original HEAD export; all baseline counts reproduced)
+- `/tmp/devjobs-m1-schema-tools/bin/python scripts/validate_openapi.py` (39 paths/55 operations)
+- `cd frontend && npm run lint && npm test && npm run build` (62 tests/17 files)
+- `backend/.venv/bin/python backend/run_browser.py` (164 passed/8 skipped; Chromium 1/1, zero browser errors)
+- `backend/.venv/bin/python backend/run_browser_concurrent.py` (164 passed/8 skipped each; both peer checks; Chromium 1/1 each)
+
+Logs use `/tmp/devjobs-independent-m2-*.log`; helpers are unversioned session
+artifacts inspected for owned tmpfs/cluster identity and cleanup guards before use.
+Initial sandbox Docker inspection was denied; permitted rerun succeeded. Baseline
+FAIL is intentional and cleaned its owned cluster. Existing JSDOM/Ant Design and
+bundle warnings remain. No latency or hosted CI claim. Exact-index export repeats
+Ruff/format/safety/schema/frontend and both browser commands plus the targeted
+helper adapted only to the exported backend ROOT. All application source used by
+those checks comes from the export; environment dependencies are reused. Final
+results/tree/commit/cleanup are reported separately to keep the tested tree fixed.
