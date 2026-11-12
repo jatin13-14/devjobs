@@ -307,6 +307,10 @@ class EmailJwtTests(TestCase):
 
 
 class RegistrationApiTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.addCleanup(cache.clear)
+
     def test_candidate_registration_canonicalizes_email_hashes_password_and_ignores_role(self):
         response = APIClient().post(
             "/api/v1/auth/candidate/register/",

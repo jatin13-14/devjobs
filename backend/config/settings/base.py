@@ -123,7 +123,9 @@ REST_FRAMEWORK = {
     # Ignore client-supplied X-Forwarded-For unless an operator sets the trusted hop count.
     'NUM_PROXIES': int(os.getenv('DRF_NUM_PROXIES', '0')),
     'DEFAULT_THROTTLE_RATES': {
-        'jwt_token': jwt_token_rate_from_env(os.getenv('JWT_TOKEN_RATE'))
+        'jwt_token': jwt_token_rate_from_env(os.getenv('JWT_TOKEN_RATE')),
+        'registration': '5/minute',
+        'jwt_refresh': '30/minute',
     },
 }
 CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173').split(',')

@@ -280,3 +280,55 @@ class JobApiTests(APITestCase):
         self.assertIsNotNone(second.data["previous"])
         self.assertFalse({item["id"] for item in first.data["results"]} & {item["id"] for item in second.data["results"]})
         self.assertEqual(self.client.get(url, {"status": Job.Status.PUBLISHED}).data["count"], 0)
+
+    def test_company_id_creation_errors_and_patch_omission(self):
+        from uuid import uuid4
+
+        missing = {key: value for key, value in self.payload.items() if key != "company_id"}
+        for payload in (
+            missing,
+            {**self.payload, "company_id": None},
+            {**self.payload, "company_id": "invalid"},
+        ):
+            response = self.create_job(payload=payload)
+            self.assertEqual(response.status_code, 400)
+            self.assertIn("company_id", response.data)
+        self.assertEqual(
+            self.create_job(payload={**self.payload, "company_id": str(uuid4())}).status_code, 404
+        )
+        created = self.create_job()
+        self.assertEqual(created.status_code, 201)
+        response = self.client.patch(
+            f"/api/v1/jobs/{created.data['id']}/", {"title": "Updated"}, format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["title"], "Updated")
+
+    def test_public_company_uuid_filter_validation_and_combined_pagination(self):
+        from uuid import uuid4
+
+        created = self.create_job()
+        job_id = created.data["id"]
+        self.client.post(f"/api/v1/jobs/{job_id}/publish/")
+        self.create_job()  # Draft must remain invisible even with a matching company.
+        self.client.force_authenticate(None)
+        for invalid in ("not-a-uuid", "", "null"):
+            response = self.client.get("/api/v1/jobs/", {"company": invalid})
+            self.assertEqual(response.status_code, 400)
+            self.assertIn("company", response.data)
+        self.assertEqual(
+            self.client.get("/api/v1/jobs/", {"company": str(uuid4())}).data["count"], 0
+        )
+        response = self.client.get(
+            "/api/v1/jobs/",
+            {
+                "company": str(self.company.pk),
+                "country": "IN",
+                "skill": "python",
+                "search": "Backend",
+                "page_size": 1,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(str(response.data["results"][0]["id"]), str(job_id))

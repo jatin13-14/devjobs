@@ -47,7 +47,7 @@ class SkillNamesField(serializers.ListField):
 
 
 class JobSerializer(RejectUnknownFieldsMixin, serializers.ModelSerializer):
-    company_id = serializers.UUIDField(write_only=True, required=False)
+    company_id = serializers.UUIDField(write_only=True)
     company = serializers.SerializerMethodField()
     skills = SkillNamesField(child=serializers.CharField(max_length=80), required=False)
 
@@ -155,12 +155,18 @@ def _public_jobs(queryset):
     )
 
 
+class JobFilterSerializer(serializers.Serializer):
+    company = serializers.UUIDField(required=False)
+
+
 class JobListBase(ListAPIView):
     serializer_class = JobSerializer
     pagination_class = JobPagination
 
     def filter_queryset(self, queryset):
         params = self.request.query_params
+        filters = JobFilterSerializer(data=params.dict())
+        filters.is_valid(raise_exception=True)
         search = params.get("search")
         if search:
             queryset = queryset.filter(
@@ -175,7 +181,9 @@ class JobListBase(ListAPIView):
             "company": "company_id",
         }
         for param, field in fields.items():
-            value = params.get(param)
+            value = (
+                filters.validated_data.get("company") if param == "company" else params.get(param)
+            )
             if value:
                 queryset = queryset.filter(**{field: value})
         skill = params.get("skill")

@@ -241,3 +241,42 @@ existing visibility restrictions. Changing status or company resets the page, cl
 results and reloads. Recruiter dashboard counts traverse all company job pages. The
 recruiter's active-company discovery endpoint retains its existing complete array response.
 No schema changes or incompatible response changes were introduced.
+
+### Milestone 1 authentication and input hardening
+
+Candidate/recruiter registration share a per-client **5 requests/minute** bucket,
+matching the default login budget to bound account-creation/password-hashing abuse.
+Refresh has a separate **30 requests/minute** bucket for simultaneous browser
+refreshes. Login policy remains unchanged. Invalid attempts consume capacity;
+changing email, token or registration role does not reset a bucket. Responses are
+429 with Retry-After seconds. New buckets use fixed UTC minute windows, allowing
+up to twice the limit around a boundary; they are not rolling-window quotas.
+Client identity follows DRF NUM_PROXIES (default 0 ignores forwarded headers).
+Operators configuring trusted hops must sanitize ingress headers and synchronize
+worker clocks. NAT users share capacity.
+
+Production retains mandatory shared Redis storage. One atomic Lua EVAL performs
+counter creation with expiry, increment, TTL repair and saturation on the configured
+Redis write connection, admitting at most the configured count per client/window
+across workers; counters live
+two windows and keys contain an HMAC of client identity, no submitted identities or
+tokens. Cache failures propagate rather than allowing requests. Redis eviction or
+restart resets quotas; size and operate the security cache accordingly. Existing
+login remains DRF's non-atomic cache-history throttle. Local/E2E caches remain
+process-local and security controls remain enabled.
+
+Redis ACLs must permit EVAL and GET/SET/PTTL/EXPIRE/INCR on the prefixed keys.
+Before release, verify maxmemory-policy noeviction, memory headroom and alerts for
+memory, evictions, failed writes, availability and restarts. Key deletion, eviction,
+restart or failover data loss can reset quotas; atomic recreation guarantees a
+positive TTL, not recovery of lost quota history. Cache errors currently produce
+generic production HTTP 500 responses and server-side exception diagnostics;
+a controlled 503 would be a separate documented response-contract change.
+
+Registration validates all configured Django password rules against an unsaved
+user containing canonical email and the submitted profile name; similarity errors
+remain password-field 400 responses. No validation-only user record is saved.
+Job creation requires a non-null UUID company_id (400 for missing/null/malformed,
+404 for nonexistent, existing authorization applies). PATCH may omit company_id;
+moving a job remains forbidden. Supplied company filters, including empty strings,
+must be UUIDs (400 otherwise); nonexistent UUIDs produce empty public results.

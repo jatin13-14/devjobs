@@ -24,12 +24,15 @@ class RegistrationSerializer(serializers.Serializer):
             raise serializers.ValidationError("An account with this email already exists.")
         return canonical
 
-    def validate_password(self, value):
+    def validate(self, attrs):
         try:
-            validate_password(value)
+            validate_password(
+                attrs["password"],
+                user=User(email=attrs["email"], first_name=attrs[self.profile_name_field]),
+            )
         except DjangoValidationError as error:
-            raise serializers.ValidationError(list(error.messages)) from error
-        return value
+            raise serializers.ValidationError({"password": list(error.messages)}) from error
+        return attrs
 
     def create(self, validated_data):
         profile_name = validated_data.pop(self.profile_name_field)

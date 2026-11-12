@@ -644,3 +644,145 @@ identity evidence, failed attempts, coverage and limits: `docs/E2E_ISOLATION.md`
 Testing strategy updated; unrelated local operations notes preserved. Original
 branch/HEAD retained; index empty. No staging, commit, push, merge, rebase, deploy,
 PR modification or mutation of existing development databases.
+
+## Milestone 1 authentication and API hardening — 2026-11-12
+
+**PASS for this focused local milestone; ready for independent audit and local
+commit.** M-01: explicit shared registration 5/minute and separate refresh
+30/minute per-client fixed-window throttles, shared Redis atomic add/increment
+in production, HMAC client keys, Retry-After and fail-closed cache errors. Existing
+login, production Redis startup guards, JWT lifetimes/refresh/logout semantics
+and authorization are retained. M-03: company_id required on create, controlled
+400/404 and unchanged PATCH omission. M-04: supplied company filters validate as
+UUIDs before filtering (including empty-value 400), public restrictions retained.
+M-08: all password validators receive unsaved canonical email/profile identity.
+No migrations, dependencies, production secrets, frontend or data-ownership changes.
+
+Targeted auth **37 PASS**, jobs **11 PASS**; final full disposable PostgreSQL suite
+**159 PASS (36.78s)**, Django system/migration consistency checks PASS. Ruff and
+formatting checks for changed/new code PASS (unrelated existing formatting kept).
+Frontend lint, **62 tests / 17 files**, build PASS. OpenAPI **39 paths / 55
+operations**, six serializer sets and three negative controls PASS. Standalone
+Chromium **1/1 (32.8s)**; concurrent suites **159 each**, peer isolation checks
+and Chromium **1/1 each (32.6s / 33.0s)** PASS, zero browser errors. Runner safety
+**16 PASS**. Ten independent Redis worker processes admitted exactly 5 registration
+and 30 refresh requests from 200 attempts per scope. Existing JSDOM/Ant Design
+warnings and bundle advisory remain non-failing. Commands, corrected initial
+failures, temporary helper details and limitations: docs/TESTING_STRATEGY.md;
+policy and error contracts: docs/API_CONVENTIONS.md and docs/openapi.yaml.
+
+All owned PostgreSQL/Redis verification containers removed; no listeners remain
+on verification ports. Existing development databases, services and unrelated
+Docker resources were not modified. Redis failover/eviction, clock skew and fixed
+window boundary bursts remain operational limitations; existing login retains
+DRF's non-atomic cache-history behavior. No hosted CI or production certification.
+Starting/ending branch `feat/admin-workspace-final`, HEAD
+`bd9a9c8942bf9f6f6e0ab31840406794c0e2b83f`; existing PROJECT_STATUS.md and
+LOCAL_DEVELOPMENT.md operations notes preserved. Index empty; no staging, commit,
+push, merge, PR #1 edit or deployment. No remaining milestone blocker.
+
+
+## Milestone 1 independent security gate — 2026-11-12
+
+**FAIL; stopped before staging or commit under the requested unsafe-failure stop
+rule.** The fixed-window throttle uses Django RedisCache.add followed by incr.
+The installed RedisCacheClient.incr performs separate EXISTS and INCR commands.
+If an exhausted counter is evicted after EXISTS observes it but before INCR,
+Redis recreates it at 1 without a TTL and the throttle admits another request.
+This is a conditional key-loss race, not a demonstrated normal-operation or
+client-controlled eviction bypass. It violates the required safe-expiration gate;
+ordinary multi-process admission counts do not test this interleaving.
+
+Database-free reproduction:
+`backend/.venv/bin/python /tmp/devjobs-m1-independent-race.py` confirmed the
+failure for registration (5) and refresh (30), executing the actual project
+throttles and installed Django RedisCache add/incr with a simulated Redis command
+interleaving. No live Redis, Docker or database was used. The first inline probe
+failed because its request stub omitted headers; the corrected helper passed both
+assertions. This is a deterministic command-interleaving simulation, not a live
+Redis eviction experiment. Resolve with an atomic counter/expiration operation
+and add key-loss/TTL regressions before repeating the full independent gate.
+
+Baseline branch/HEAD match `feat/admin-workspace-final` /
+`bd9a9c8942bf9f6f6e0ab31840406794c0e2b83f`; initial git diff --check PASS.
+The 13 dirty paths match the expected milestone plus unrelated operations notes.
+Historical test results above were not independently reconfirmed: full tests,
+frontend, OpenAPI, Docker availability/cleanup and Redis multi-process runs were
+not executed after the security stop. No staged export, tree verification or
+commit exists for this audit. No hosted CI claim. Implementation, API/schema,
+production settings and existing documentation text remain unchanged; only this
+append-only finding is added to PROJECT_STATUS.md and docs/TESTING_STRATEGY.md.
+Existing operations notes remain uncommitted. No database/service/container
+access or mutation, push, merge, deployment or PR #1 modification occurred.
+
+## Redis throttle atomicity remediation — 2026-11-12
+
+**PASS for the focused local fix; ready for a new independent audit.** Resolves
+the preceding key-loss race: installed Django RedisCache.incr used separate
+EXISTS/INCR commands, allowing a lost key to be recreated without expiration.
+The throttle now uses one Lua EVAL on the configured Django Redis primary pool.
+Creation plus TTL, increment, persistent-counter TTL repair and saturation are
+atomic. Existing expiring counters keep their TTL; storage remains 120 seconds
+for minute buckets. Saturation prevents integer overflow; invalid values/cache
+failures propagate without a memory fallback. Registration remains shared 5/min,
+refresh separate 30/min, with unchanged 429/Retry-After, JWT/login and permissions.
+
+Six checked-in real-Redis regression tests PASS, including the old command-loss
+interleaving, expiration/recreation, TTL retention/repair, concurrency, overflow
+and failure handling. Ten independent processes admitted exactly 5 registration
+and 30 refresh requests from 200 attempts per scope, repeated after deleting the
+counters; all counters had positive TTLs. PostgreSQL targeted auth 37 and jobs 11
+PASS; full suite 159 PASS / 6 Redis-only skipped (run separately against Redis).
+Standalone and both concurrent runners repeat 159 PASS / 6 skipped; Chromium
+1/1 each, zero browser errors, both concurrent ownership rejection checks PASS.
+Ruff, four-file formatting, Django system/migration checks, 16 runner safety tests,
+frontend lint/62 tests/build and OpenAPI 39 paths/55 operations PASS. Existing
+JSDOM/Ant Design/bundle advisories remain. Exact commands/results and reproducible
+coverage boundaries are appended to docs/TESTING_STRATEGY.md.
+
+Key eviction, deletion, restart or failover data loss can still reset quotas.
+Release gates: verify noeviction policy, memory capacity/headroom and alerts for
+memory, eviction, failed writes and availability/restarts; Redis ACLs must permit
+EVAL and the script commands. Noeviction fails closed on memory exhaustion but
+does not preserve lost quota history. Deployment configuration was not changed;
+clock skew, fixed-window bursts and existing login cache-history behavior remain.
+
+Four owned disposable PostgreSQL containers and the isolated Redis container
+were removed; final label queries empty and no owned service/database listeners.
+Existing development databases and devjobs_test untouched. This task changed only
+throttles.py, new redis_throttle_tests.py and append-only entries in this file and
+docs/TESTING_STRATEGY.md. Existing uncommitted work and LOCAL_DEVELOPMENT.md notes
+preserved; no API/schema/dependency/secret/production settings changes. Branch
+feat/admin-workspace-final and HEAD bd9a9c8942bf9f6f6e0ab31840406794c0e2b83f
+unchanged; index empty. No staging, commit, push, merge, deployment or next milestone.
+
+
+## Final independent Milestone 1 audit — 2026-11-12
+
+Working-tree security audit PASS. Reviewed all 14 dirty paths and installed
+Django Redis integration; no serious remaining security defect found. Atomic Lua
+creation/expiry, retained TTL, repair and bounded counters remove the original
+EXISTS/INCR race. Added minimal exhausted-key recreation and authentication/ACL/
+script-error regressions (eight real-Redis tests). Ten processes admit 5/30 from
+200 attempts per scope, repeated after deletion with positive TTLs. Twelve
+DB-free endpoint probes confirm generic 500 responses with exception diagnostics
+for connection/authentication/ACL/script failures; no memory fallback or internal
+error text returned. Controlled 503 is deferred as a response-contract change.
+
+Canonical unsaved-user password validation, registration atomicity, shared 5/min
+registration and separate 30/min refresh, positive Retry-After, job UUID 400/404,
+ownership, PATCH omission and public filtering reviewed. Login/JWT policy,
+production settings, schema and dependencies unchanged. Corrected stale API
+atomicity documentation and added explicit OpenAPI rate descriptions.
+
+Working checks PASS: Ruff, four-file format and added job-method format checks;
+16 safety tests; targeted auth 37 and jobs 11; full disposable PostgreSQL 159
+passed / eight Redis-only skipped; frontend lint, 62 tests / 17 files and build;
+OpenAPI 39 paths / 55 operations; standalone and both concurrent browser runs.
+Exact commands and limitations are in docs/TESTING_STRATEGY.md. Independent index
+export must repeat all required checks before the single authorized local commit;
+its tree, results and commit identity are delivered separately to avoid changing
+an already verified tree. Unrelated operations notes remain outside the index.
+Redis loss can reset quotas; noeviction, memory/availability monitoring, sanitized
+proxy hops, synchronized clocks and shared-NAT limits remain operational gates.
+No hosted CI, push, merge, deployment, PR #1 edit or Milestone 2 work.

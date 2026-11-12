@@ -12,6 +12,7 @@ from apps.accounts.serializers import (
     EmailTokenObtainPairSerializer,
     RecruiterRegistrationSerializer,
 )
+from apps.accounts.throttles import RefreshRateThrottle, RegistrationRateThrottle
 from apps.applications.api import (
     CandidateApplicationDetailView,
     CandidateApplicationsView,
@@ -46,16 +47,22 @@ class EmailTokenObtainPairView(TokenObtainPairView):
     throttle_classes = (JwtTokenRateThrottle,)
 
 
+class ThrottledTokenRefreshView(TokenRefreshView):
+    throttle_classes = (RefreshRateThrottle,)
+
+
 class CandidateRegistrationView(generics.CreateAPIView):
     permission_classes = (AllowAny,)
     authentication_classes = ()
     serializer_class = CandidateRegistrationSerializer
+    throttle_classes = (RegistrationRateThrottle,)
 
 
 class RecruiterRegistrationView(generics.CreateAPIView):
     permission_classes = (AllowAny,)
     authentication_classes = ()
     serializer_class = RecruiterRegistrationSerializer
+    throttle_classes = (RegistrationRateThrottle,)
 
 
 class HealthView(APIView):
@@ -85,7 +92,7 @@ urlpatterns = [
     ),
     path("api/v1/auth/login/", EmailTokenObtainPairView.as_view(), name="login"),
     path("api/v1/auth/token/", EmailTokenObtainPairView.as_view(), name="token_obtain_pair"),
-    path("api/v1/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("api/v1/auth/token/refresh/", ThrottledTokenRefreshView.as_view(), name="token_refresh"),
     path("api/v1/candidates/me/profile/", CandidateProfileView.as_view(), name="candidate-profile"),
     path("api/v1/candidates/me/skills/", CandidateSkillsView.as_view(), name="candidate-skills"),
     path(
