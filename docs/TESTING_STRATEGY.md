@@ -440,3 +440,117 @@ Ruff/format/safety/schema/frontend and both browser commands plus the targeted
 helper adapted only to the exported backend ROOT. All application source used by
 those checks comes from the export; environment dependencies are reused. Final
 results/tree/commit/cleanup are reported separately to keep the tested tree fixed.
+
+## Milestone 2 Stage 2A — opt-in pagination (2026-11-13)
+
+`config/collection_pagination_tests.py` exercises all three authorized GETs over
+104 skills / 105 memberships / 105 recruiter companies in the verified disposable
+PostgreSQL runner. Three HTTP tests use per-endpoint subtests for legacy field/order
+identity, ignored page-only parameters, default/maximum/capped sizes, two pages,
+last page, navigation links, invalid modes/pages/sizes, empty caller collections,
+role/authentication boundaries, caller/company counts, MEMBER denial and suspended
+company exclusion/denial. Existing company/profile/service tests retain mutation,
+canonicalization, ownership-transfer and inactive-membership coverage.
+
+SQL capture at page sizes 1/20/100 requires database COUNT and LIMIT, exact returned
+page size, and constant query counts per endpoint. The helper slices before calling
+the serializer; existing joins remain. Unique skill names need no new tie-breaker.
+Company-members empty success is unreachable under active OWNER/ADMIN authorization;
+empty envelope behavior is tested through both other endpoints. No benchmark or
+latency/memory claim; legacy collections remain unbounded. M-06 remains open.
+
+Verification uses `/tmp/devjobs-stage2a-targeted.py`, copied from the documented
+owned-container runner with ROOT fixed to this checkout, targeted pytest invocations
+inserted, and browser fixture/startup omitted. Its identity verification, inherited
+DB-variable clearing, tmpfs ownership and exact-resource cleanup remain intact.
+No existing development/test database is used. Temporary helper is not source.
+
+Commands and local results (repository root unless indicated):
+
+| Command | Result |
+|---|---|
+| `backend/.venv/bin/python /tmp/devjobs-stage2a-targeted.py` | PASS: targeted companies API + candidates API + pagination 16; companies/recruiters services 27; full PostgreSQL 167 passed / 8 Redis-only skipped (72.40s); system check and migration consistency PASS |
+| `backend/.venv/bin/ruff check backend` | PASS |
+| `backend/.venv/bin/ruff format --check backend/config/collection_pagination.py backend/config/collection_pagination_tests.py` | PASS |
+| `backend/.venv/bin/ruff format --check --range 81-89 backend/apps/candidates/api.py` | PASS |
+| `backend/.venv/bin/ruff format --check --range 154-164 backend/apps/companies/api.py` | PASS |
+| `backend/.venv/bin/ruff format --check --range 64-77 backend/apps/recruiters/api.py` | PASS; only changed methods formatted; surrounding historical style retained |
+| In `backend/`: `.venv/bin/python -m unittest config.test_e2e_safety_unit config.test_e2e_runtime_unit` | PASS: 16 |
+| `/tmp/devjobs-m1-schema-tools/bin/python scripts/validate_openapi.py` | PASS: 39 paths / 55 operations, six field sets and three negative controls |
+| In `frontend/`: `npm run lint`, `npm test`, `npm run build` | PASS: 62 tests / 17 files; existing JSDOM warnings and 755.17 kB bundle advisory |
+| `backend/.venv/bin/python backend/run_browser.py` | PASS: 167 passed / 8 skipped (68.07s), Chromium 1/1 (36.7s scenario), zero browser errors; 15 existing Ant Design warnings; cleanup PASS |
+
+An offline semantic comparison against HEAD confirmed that only the three approved
+GET OpenAPI operations changed; other operations and components are identical.
+Initial schema-generation attempts had indentation/newline errors; corrected before
+the successful validator. Initial synthetic fixture omitted required profile names
+(13 passed / 3 setup errors); corrected before final runs. Initial sandbox attempts
+could not access Docker/bind sockets; rerun with approved access, safety 16 PASS.
+Range formatting initially identified formatting changes, applied only within the
+three GET methods and rechecked successfully. These are local results, not hosted CI.
+Redis-only tests were skipped because these PostgreSQL workflows do not provision
+Redis; throttles are unchanged and Redis integration was not rerun in this task.
+
+`backend/.venv/bin/python backend/run_browser_concurrent.py` PASS: both full
+PostgreSQL suites 167 passed / 8 skipped (72.65s / 72.78s), both peer
+service/cluster/credential rejection checks, Chromium 1/1 each (33.4s / 33.9s
+scenarios), zero browser errors and 15 existing Ant Design warnings per scenario.
+Standalone and concurrent workflows retain skill management, company selection,
+membership management and role restrictions against default legacy arrays.
+All five owned PostgreSQL containers (including the initial failed fixture run)
+were removed; unrelated stopped `welcome-to-docker` remains. No listeners on the
+ten final logged verification ports: 63737, 63756, 63757, 63758, 63795, 63796,
+63797, 63798, 63799, 63800. No unrelated Docker resources removed.
+Final baseline branch/HEAD/tree unchanged; index empty. Initial PROJECT_STATUS.md
+bytes retained as a prefix and LOCAL_DEVELOPMENT.md identical to its initial copy.
+No staging, commit, push, merge, deployment, PR #1 edit or Stage 2B/2C work.
+
+## Independent Stage 2A audit and exact-index commit gate — 2026-11-13
+
+Independent implementation/security review found no serious defect. Authorization,
+caller/company filters and deterministic ordering precede COUNT and slicing; joins
+are retained and mutation methods, schema/indexes, dependencies, frontend and
+production settings are unchanged. Repeated query parameters consistently use the
+last value in Django/DRF; both mode orders are regression-tested. No authorization
+or count-scope bypass was found. Added coverage asserts independent names/field
+sets, active ADMIN access, retained query parameters, huge invalid pages and SQL
+LIMIT/OFFSET. Five pagination tests now include actual datasets of 100/20/1 rows
+and page sizes 1/20/100: skills 3/3/3 queries, recruiter companies 3/3/3, company
+members 6/6/6, using force-authenticated HTTP requests. Legacy arrays still bypass
+pagination. Existing tests exercise ownership transfer, skill normalization and
+POST/DELETE contracts. Missing-profile behavior is preserved by unchanged lookups.
+COUNT/sort/deep-offset costs and concurrent-write page drift remain; no measured
+latency, memory or payload improvement is asserted. M-06 remains open.
+
+Final working commands (all PASS):
+- `backend/.venv/bin/python /tmp/devjobs-stage2a-targeted.py` with log
+  `/tmp/devjobs-stage2a-independent-working-final-targeted.log`: system/migration
+  checks, targeted API/pagination 18, company/recruiter services 27, full PostgreSQL
+  169 passed / 8 Redis-only skipped.
+- `backend/.venv/bin/ruff check backend`; documented new-file and three changed
+  method range format checks; `git diff --check`.
+- In backend: `.venv/bin/python -m unittest config.test_e2e_safety_unit config.test_e2e_runtime_unit`
+  (16 passed).
+- `/tmp/devjobs-m1-schema-tools/bin/python scripts/validate_openapi.py`: OpenAPI 3.1,
+  39 paths/55 operations, six field sets and three negative controls. Independent
+  semantic comparison with HEAD found only the three approved GETs changed.
+- In frontend: `npm run lint && npm test && npm run build`: 62 tests/17 files.
+- `backend/.venv/bin/python backend/run_browser.py`: full 169/8, Chromium 1/1,
+  zero browser errors; final log uses the independent-working-final-browser suffix.
+
+Exact staged export repeats Ruff, formatting, system/migration checks, targeted
+18 and services 27, full PostgreSQL, OpenAPI, safety 16, frontend lint/tests/build,
+standalone and concurrent Chromium. Export uses only Git-tree source and reused
+installed dependencies; the temporary targeted helper changes only backend ROOT
+and import path. Tracked bytes/modes are verified before and after. Export results,
+tree SHA and single local commit identity are reported at delivery, keeping the
+verified tree fixed. Earlier intermediate runs passed 167/168 before the added
+tests; they do not replace the final gates. Initial sandbox Docker access failed;
+approved isolated reruns succeeded. Hosted CI was not run. Existing JSDOM,
+Ant Design and bundle warnings remain. No Stage 2B/2C, remote or deployment work.
+
+Final working concurrent command `backend/.venv/bin/python backend/run_browser_concurrent.py`
+PASS: 169 passed / 8 skipped in each cluster; both peer rejection checks and
+Chromium 1/1 each, zero browser errors. Log:
+`/tmp/devjobs-stage2a-independent-working-final-concurrent.log`. All owned runs
+reported cleanup. Unrelated stopped Docker resources are preserved.

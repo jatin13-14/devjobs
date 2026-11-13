@@ -842,3 +842,60 @@ notes remain outside the index. Exact-index export repeats the complete gate;
 results, tree and single local commit identity are reported at delivery without
 editing the verified snapshot. No hosted CI claim; no push/merge/deploy/PR edit.
 Skill payload size and fixed detail costs remain; M-06/M-07/Stage 2 not started.
+
+## Milestone 2 Stage 2A — opt-in backend pagination — 2026-11-13
+
+**PASS locally; M-06 remains open.** Exactly company members, recruiter me/companies
+and candidate me/skills GETs support `pagination=page` via a shared helper using
+JobPagination. Missing opt-in preserves arrays, fields, ordering, authorization
+and mutations; page/page_size alone remains ignored. Empty/unsupported modes 400;
+default 20, maximum 100, DRF page/size errors, last and navigation retained.
+Authorization/scoping precede count/slicing; joins preserved, SQL LIMIT precedes
+serialization, query counts constant at page sizes 1/20/100. No schema/model/index,
+frontend/filter/dependency/global-pagination/production-settings change.
+
+Three new multi-endpoint HTTP regression tests cover legacy identity, pagination,
+parameters, SQL, empty callers, privacy, roles, scoped counts and suspension.
+Targeted API/pagination 16 and company/recruiter service 27 PASS. Full isolated
+PostgreSQL 167 passed / 8 Redis-only skipped; standalone and both concurrent runs
+repeat 167/8 and Chromium 1/1 each, zero browser errors; both peer isolation checks
+PASS. Ruff, new-file and changed-method formatting, Django system/migration checks,
+16 runner safety tests, OpenAPI 39 paths/55 operations, frontend lint/62 tests/build
+PASS. Existing non-failing JSDOM/Ant Design/bundle warnings retained. Initial fixture
+and schema-generation errors corrected; exact commands/results in TESTING_STRATEGY.
+No hosted CI claim. API_CONVENTIONS and the three OpenAPI GET operations updated.
+
+All five owned containers cleaned, unrelated stopped container preserved; no
+listeners on ten final logged ports. Existing databases/devjobs_test untouched.
+Legacy arrays remain unbounded; counts add SQL work and pages may shift with
+concurrent writes. No latency/memory claim. Stage 2B adoption/search/lookup and
+Stage 2C retirement require separate approval; neither started.
+Starting/ending branch feat/admin-workspace-final, HEAD
+57b6d328d846056dbca974e57fe33518c06ff2fc, committed tree
+df88340b59f36bcf9634e253a3e7df277495fae2 unchanged. Initial operations-note bytes
+preserved; LOCAL_DEVELOPMENT.md unchanged by task. Index empty; no staging, commit,
+push, merge, deployment or PR #1 modification.
+
+## Independent Stage 2A audit and local commit gate — 2026-11-13
+
+Independent compatibility/security/SQL review PASS; no serious defect found.
+Added narrowly scoped tests for repeated-parameter last-value semantics, retained
+query parameters, huge page rejection, independent values/fields, ADMIN access,
+second-page OFFSET and actual 1/20/100-row query growth. Five pagination tests;
+HTTP query counts skills 3/3/3, recruiter companies 3/3/3, company members 6/6/6.
+Authorization and scope precede count/slicing; legacy arrays and mutations remain
+unchanged. No API compatibility/schema/index/dependency/frontend/production change.
+
+Final working gates PASS: targeted 18, services 27, full disposable PostgreSQL
+169 passed / eight Redis-only skipped; Ruff/changed formatting, system/migration
+checks, OpenAPI 39 paths/55 operations, safety 16; frontend lint/62 tests/build;
+standalone and concurrent Chromium 1/1 each, both peer checks, zero browser errors.
+Exact commands/results and intermediate attempts: docs/TESTING_STRATEGY.md.
+
+Only nine milestone paths are eligible for selective staging. Existing operations
+notes remain byte-for-byte outside the index. Exact-index export repeats every
+required gate before the single local commit; tree/results/commit are delivered
+separately so recording them does not change the tested snapshot. Hosted CI not
+run. M-06 remains open: legacy arrays unbounded; COUNT/sort/deep-offset costs and
+concurrent-write drift remain. No latency/memory claim. Stage 2B/2C not started;
+no push, merge, deployment or PR #1 change.

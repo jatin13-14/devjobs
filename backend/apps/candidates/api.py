@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import User
 from apps.candidates.models import CandidateProfile, CandidateSkill, Skill
+from config.collection_pagination import collection_response
 
 
 class IsCandidate(BasePermission):
@@ -78,8 +79,12 @@ class CandidateSkillsView(APIView):
         return get_object_or_404(CandidateProfile, user=request.user)
 
     def get(self, request):
-        skills = Skill.objects.filter(candidate_skills__candidate=self.get_profile(request)).order_by("name")
-        return Response(SkillSerializer(skills, many=True).data)
+        skills = Skill.objects.filter(
+            candidate_skills__candidate=self.get_profile(request)
+        ).order_by("name")
+        return collection_response(
+            request, skills, lambda items: SkillSerializer(items, many=True).data
+        )
 
     def post(self, request):
         serializer = SkillInputSerializer(data=request.data)

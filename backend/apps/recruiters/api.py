@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from apps.accounts.models import User
 from apps.companies.models import CompanyMembership
 from apps.recruiters.models import RecruiterProfile
+from config.collection_pagination import collection_response
 
 
 class IsRecruiter(BasePermission):
@@ -60,12 +61,16 @@ class RecruiterCompaniesView(APIView):
             .select_related("company")
             .order_by("company__name", "company_id")
         )
-        return Response([
-            {
-                "id": str(item.company_id),
-                "name": item.company.name,
-                "membership_id": str(item.pk),
-                "role": item.role,
-            }
-            for item in memberships
-        ])
+        return collection_response(
+            request,
+            memberships,
+            lambda items: [
+                {
+                    "id": str(item.company_id),
+                    "name": item.company.name,
+                    "membership_id": str(item.pk),
+                    "role": item.role,
+                }
+                for item in items
+            ],
+        )

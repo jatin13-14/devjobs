@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import User
 from apps.recruiters.models import RecruiterProfile
+from config.collection_pagination import collection_response
 
 from .models import Company, CompanyMembership
 from .services import (
@@ -152,8 +153,14 @@ class CompanyMembersView(APIView):
 
     def get(self, request, company_id):
         self._authorize(request, company_id)
-        memberships = CompanyMembership.objects.filter(company_id=company_id).select_related("recruiter").order_by("created_at", "id")
-        return Response(MembershipSerializer(memberships, many=True).data)
+        memberships = (
+            CompanyMembership.objects.filter(company_id=company_id)
+            .select_related("recruiter")
+            .order_by("created_at", "id")
+        )
+        return collection_response(
+            request, memberships, lambda items: MembershipSerializer(items, many=True).data
+        )
 
     def post(self, request, company_id):
         self._authorize(request, company_id)

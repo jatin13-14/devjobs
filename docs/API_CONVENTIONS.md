@@ -280,3 +280,37 @@ Job creation requires a non-null UUID company_id (400 for missing/null/malformed
 404 for nonexistent, existing authorization applies). PATCH may omit company_id;
 moving a job remains forbidden. Supplied company filters, including empty strings,
 must be UUIDs (400 otherwise); nonexistent UUIDs produce empty public results.
+
+## Milestone 2 Stage 2A: temporary opt-in collection pagination
+
+Exactly these GET operations accept `pagination=page`: company members,
+recruiter `/me/companies/`, and candidate `/me/skills/`. Omission retains the
+historical plain array (including empty `[]`), fields, ordering and permissions.
+`page` or `page_size` alone remains ignored. Empty/unsupported pagination modes
+return 400 after existing authentication/profile/company authorization checks.
+Mutations and global pagination defaults are unchanged.
+
+Opt-in responses contain `count`, `next`, `previous`, `results`; page size defaults
+to 20 and positive sizes are capped at 100. Existing JobPagination/DRF semantics
+apply: invalid/nonpositive sizes fall back to 20, invalid/out-of-range pages return
+404, and `page=last` works. Links preserve the opt-in and query parameters. No new
+filters are implemented. Empty first pages return a zero-count envelope.
+
+Memberships retain `created_at, id` order and include all statuses, after active
+OWNER/ADMIN authorization for a non-suspended company; counts are company-scoped.
+Recruiter companies retain `company.name, company.id` order, caller ACTIVE
+memberships and exclusion of suspended companies. Skills retain name order and
+caller ownership; globally unique skill names already provide deterministic order.
+A successful members collection cannot be empty because authorization requires an
+active membership. Missing profiles and inaccessible companies retain prior errors.
+
+OpenAPI documents both response shapes with `oneOf`. This is temporary migration
+support: **M-06 remains open**. Stage 2B requires separate approval for frontend
+adoption/search/lookup; Stage 2C legacy retirement also requires separate approval.
+Legacy arrays remain unbounded, counts add SQL work, and page-number navigation
+can shift under concurrent writes. No latency or memory improvement is claimed.
+
+Repeated query parameters follow Django/DRF last-value semantics, including the
+pagination mode: `pagination=invalid&pagination=page` opts in, while the reverse
+returns 400. This is consistent parsing, not an authorization bypass; permissions
+and queryset scope are established before the helper reads the mode.
