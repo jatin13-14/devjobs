@@ -1,3 +1,4 @@
+import { writeAuth } from '../../auth/api.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -15,8 +16,8 @@ const application = { id: 'app-1', job: { id: 'job-1', title: job.title, company
 function renderRoute(path, element, initial = path) {
   return render(<ConfigProvider><AuthProvider><MemoryRouter initialEntries={[initial]}><Routes><Route path={path} element={element} /><Route path="/login" element={<p>Login destination</p>} /><Route path="/jobs/:id" element={<JobDetailPage />} /><Route path="/jobs/:id/apply" element={<JobApplicationPage />} /><Route path="/candidate/applications" element={<ApplicationsPage />} /><Route path="/candidate/applications/:applicationId" element={<ApplicationDetailPage />} /><Route path="/candidate" element={<p>Candidate destination</p>} /><Route path="/recruiter" element={<p>Recruiter destination</p>} /><Route path="*" element={<p>Not found</p>} /></Routes></MemoryRouter></AuthProvider></ConfigProvider>);
 }
-function setUser(role = 'candidate') { window.localStorage.setItem('devjobs.auth', JSON.stringify({ access: 'access', refresh: 'refresh', user: { id: 'u1', role } })); }
-beforeEach(() => { vi.clearAllMocks(); window.localStorage.clear(); }); afterEach(cleanup);
+async function setUser(role = 'candidate') { await writeAuth({ access: 'access', refresh: 'refresh', user: { id: 'u1', role } }); }
+beforeEach(async () => { vi.clearAllMocks(); window.localStorage.clear(); }); afterEach(cleanup);
 
 describe('candidate job discovery and applications', () => {
   it('renders public jobs, searches title and description, filters and paginates', async () => {
@@ -41,7 +42,7 @@ describe('candidate job discovery and applications', () => {
     expect(await screen.findByText('Build useful tools.')).toBeInTheDocument(); await user.click(screen.getByRole('button', { name: 'Log in to apply' })); expect(await screen.findByText('Login destination')).toBeInTheDocument();
   });
   it('submits an optional cover letter and handles duplicate and closed jobs', async () => {
-    const user = userEvent.setup(); setUser(); jobsApi.detail.mockResolvedValue(job); jobsApi.apply.mockResolvedValue(application); jobsApi.application.mockResolvedValue(application);
+    const user = userEvent.setup(); await setUser(); jobsApi.detail.mockResolvedValue(job); jobsApi.apply.mockResolvedValue(application); jobsApi.application.mockResolvedValue(application);
     renderRoute('/jobs/:id/apply', <JobApplicationPage />, '/jobs/job-1/apply');
     await user.type(await screen.findByLabelText(/Cover letter/), 'I build React apps.'); await user.click(screen.getByRole('button', { name: 'Submit application' }));
     await waitFor(() => expect(jobsApi.apply).toHaveBeenCalledWith('job-1', { cover_letter: 'I build React apps.' })); expect(await screen.findByText('APPLICATION DETAIL')).toBeInTheDocument();
@@ -49,12 +50,12 @@ describe('candidate job discovery and applications', () => {
     renderRoute('/jobs/:id/apply', <JobApplicationPage />, '/jobs/job-1/apply'); await user.click(await screen.findByRole('button', { name: 'Submit application' })); expect(await screen.findByText('You have already applied to this job.')).toBeInTheDocument();
   });
   it('lists application status and withdraws then refreshes', async () => {
-    const user = userEvent.setup(); setUser(); jobsApi.applications.mockResolvedValue({ results: [application] }); jobsApi.withdraw.mockResolvedValue({ ...application, status: 'WITHDRAWN' });
+    const user = userEvent.setup(); await setUser(); jobsApi.applications.mockResolvedValue({ results: [application] }); jobsApi.withdraw.mockResolvedValue({ ...application, status: 'WITHDRAWN' });
     renderRoute('/candidate/applications', <ApplicationsPage />); expect(await screen.findByText('Submitted')).toBeInTheDocument(); await user.click(screen.getAllByRole('button', { name: 'Withdraw', exact: true })[0]); await user.click((await screen.findAllByRole('button', { name: 'Withdraw', exact: true })).at(-1));
     await waitFor(() => expect(jobsApi.withdraw).toHaveBeenCalledWith('app-1')); expect(jobsApi.applications).toHaveBeenCalledTimes(2);
   });
   it('shows application details and only offers withdrawal for active statuses', async () => {
-    setUser(); jobsApi.application.mockResolvedValue(application); renderRoute('/candidate/applications/:applicationId', <ApplicationDetailPage />, '/candidate/applications/app-1');
+    await setUser(); jobsApi.application.mockResolvedValue(application); renderRoute('/candidate/applications/:applicationId', <ApplicationDetailPage />, '/candidate/applications/app-1');
     expect(await screen.findByText('I build React apps.')).toBeInTheDocument(); expect(screen.getByRole('button', { name: 'Withdraw application' })).toBeInTheDocument();
   });
 });

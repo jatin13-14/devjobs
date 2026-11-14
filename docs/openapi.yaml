@@ -815,12 +815,19 @@ paths:
         preserves the legacy array, ordering and authorization. Only pagination=page
         enables the envelope. Empty or unsupported modes return 400. Invalid page
         returns 404; page=last is supported. Invalid/nonpositive page_size uses 20;
-        oversized positive values are capped at 100. No new filters are supported.
+        oversized positive values are capped at 100. In paginated mode search is trimmed,
+        case-insensitive company-name substring matching (maximum 200 characters).
+        company_id validates a UUID and returns zero results for inaccessible IDs.
+        Both filters intersect within eligible memberships before count and slicing;
+        malformed filters return 400. Legacy mode ignores both filters. Repeated
+        parameters use the last value.
         Recruiter role and caller profile required. Only caller ACTIVE memberships in non-suspended companies are visible, ordered by company name then company ID.
       parameters:
         - { in: query, name: pagination, schema: { type: string, enum: [page] }, description: Explicit opt-in; omit for legacy array. }
         - { in: query, name: page, schema: { type: string }, description: Page number or last; ignored without opt-in. }
         - { in: query, name: page_size, schema: { type: integer, default: 20, maximum: 100 }, description: Page size; ignored without opt-in. }
+        - { in: query, name: search, schema: { type: string, maxLength: 200 }, description: Trimmed case-insensitive company-name substring; paginated mode only. }
+        - { in: query, name: company_id, schema: { type: string, format: uuid }, description: Exact eligible company; intersects search; paginated mode only. }
       responses:
         '200':
           description: Active memberships; an empty array means the recruiter has no active company memberships.

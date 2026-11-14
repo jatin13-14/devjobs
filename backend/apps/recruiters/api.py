@@ -56,11 +56,27 @@ class RecruiterCompaniesView(APIView):
         profile = get_object_or_404(RecruiterProfile, user=request.user)
         memberships = (
             CompanyMembership.objects.filter(
-                recruiter=profile, status=CompanyMembership.Status.ACTIVE, company__is_suspended=False
+                recruiter=profile,
+                status=CompanyMembership.Status.ACTIVE,
+                company__is_suspended=False,
             )
             .select_related("company")
             .order_by("company__name", "company_id")
         )
+        if request.query_params.get("pagination") == "page":
+            filters = RecruiterCompanyFilters(
+                data={
+                    key: request.query_params[key]
+                    for key in ("search", "company_id")
+                    if key in request.query_params
+                }
+            )
+            filters.is_valid(raise_exception=True)
+            values = filters.validated_data
+            if values.get("search"):
+                memberships = memberships.filter(company__name__icontains=values["search"])
+            if "company_id" in values:
+                memberships = memberships.filter(company_id=values["company_id"])
         return collection_response(
             request,
             memberships,
@@ -74,3 +90,10 @@ class RecruiterCompaniesView(APIView):
                 for item in items
             ],
         )
+
+
+class RecruiterCompanyFilters(serializers.Serializer):
+    search = serializers.CharField(
+        required=False, allow_blank=True, max_length=200, trim_whitespace=True
+    )
+    company_id = serializers.UUIDField(required=False)

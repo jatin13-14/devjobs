@@ -1,4 +1,5 @@
 """Pure safety checks: run with unittest, without Django setup or a database."""
+
 import unittest
 from unittest.mock import MagicMock
 
@@ -10,7 +11,8 @@ from config.e2e_safety import validate_environment, verify_connection
 class E2ESafetyTests(unittest.TestCase):
     def setUp(self):
         self.env = {
-            "DEVJOBS_E2E": "1", "E2E_RUN_ID": "synthetic-run",
+            "DEVJOBS_E2E": "1",
+            "E2E_RUN_ID": "synthetic-run",
             "E2E_SYSTEM_IDENTIFIER": "12345",
             "E2E_DATABASE_URL": "postgresql://synthetic:synthetic@127.0.0.1:55439/devjobs_e2e_disposable",
         }

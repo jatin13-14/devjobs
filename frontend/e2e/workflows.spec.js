@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { login } from './helpers/login.js';
 
 const api = `${process.env.E2E_BACKEND_URL}/api/v1`;
 const password = process.env.E2E_FIXTURE_PASSWORD;
@@ -36,13 +37,6 @@ async function inspectWorkspace(page, role) {
   await page.setViewportSize({ width: 1440, height: 960 });
 }
 
-async function login(page, email, pass = password) {
-  await page.goto(email === process.env.E2E_ADMIN_EMAIL ? '/admin/login' : '/login');
-  await page.getByLabel('Email address').fill(email);
-  await page.getByLabel('Password', { exact: true }).fill(pass);
-  await page.locator('form').getByRole('button', { name: 'Log in', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Open user menu' })).toBeVisible();
-}
 async function register(page, role) {
   const email = `e2e-${role}-${run}@example.test`;
   await page.goto(`/register/${role}`);
@@ -62,7 +56,7 @@ async function register(page, role) {
   await login(page, email);
   return email;
 }
-async function auth(page) { return page.evaluate(() => JSON.parse(localStorage.getItem('devjobs.auth'))); }
+async function auth(page) { return page.evaluate(() => JSON.parse(localStorage.getItem('devjobs.auth.v2'))?.credentials); }
 async function call(page, method, path, data) {
   const { access } = await auth(page);
   const response = await page.request[method](`${api}${path}`, { data, headers: { Authorization: `Bearer ${access}` } });
@@ -81,6 +75,10 @@ test('candidate, recruiter and administrator workflow with private access enforc
   ]);
   function captureConsole(message) {
     if (message.type() !== 'error') return;
+    if (message.location().url === `${api}/auth/login/` && message.text().includes('429')) {
+      developmentWarnings.push('Expected login quota response; honored Retry-After');
+      return;
+    }
     if (knownWarnings.has(message.text())) developmentWarnings.push(message.text());
     else browserErrors.push(message.text().replace(/([?&]token=)[^&\s'"<>]+/g, '$1[redacted]'));
   }
@@ -130,6 +128,27 @@ test('candidate, recruiter and administrator workflow with private access enforc
   await recruiter.getByRole('button', { name: 'Save company' }).click();
   await expect(recruiter.getByText('Active membership · OWNER')).toBeVisible();
   const companyId = recruiter.url().split('/').pop();
+  const extraCompanies = [];
+  for (let index = 0; index < 21; index += 1) {
+    const created = await call(recruiter, 'post', '/companies/', { name: `ZZ Synthetic ${String(index).padStart(2, '0')} ${run}` });
+    extraCompanies.push(created.company);
+  }
+  const beyondFirst = extraCompanies.at(-1);
+  await recruiter.goto('/recruiter/companies');
+  await expect(recruiter.getByText('22 companies')).toBeVisible();
+  await recruiter.getByRole('button', { name: 'Next page' }).click();
+  await expect(recruiter.getByText(beyondFirst.name, { exact: true })).toBeVisible();
+  await recruiter.getByRole('searchbox', { name: 'Search companies' }).fill('ZZ Synthetic 20');
+  await recruiter.getByRole('searchbox', { name: 'Search companies' }).press('Enter');
+  await expect(recruiter.getByText('1 companies')).toBeVisible();
+  await recruiter.goto(`/recruiter?company=${beyondFirst.id}`);
+  await expect(recruiter.getByText('Active membership · OWNER')).toBeVisible();
+  await recruiter.getByRole('combobox', { name: 'Company', exact: true }).click();
+  await recruiter.getByText(`Synthetic Company ${run} · OWNER`, { exact: true }).click();
+  await expect(recruiter).toHaveURL(new RegExp(`company=${companyId}`));
+  await recruiter.goto(`/recruiter/companies/${companyId}`);
+  await expect(recruiter.getByText('Active membership · OWNER')).toBeVisible();
+
   const memberResponse = await recruiter.request.post(`${api}/auth/recruiter/register/`, { data: { name: 'Synthetic member', email: `e2e-member-${run}@example.test`, password } });
   expect(memberResponse.ok()).toBeTruthy(); const member = await memberResponse.json();
   await recruiter.getByLabel('Recruiter account ID').fill(member.id);
@@ -256,9 +275,12 @@ test('candidate, recruiter and administrator workflow with private access enforc
   await expect(candidate.getByRole('status')).toHaveText('No resume uploaded.');
   await candidate.getByRole('button', { name: 'Open user menu' }).click();
   await candidate.getByRole('menuitem', { name: /Log out/i }).click();
+  // Logout commits asynchronously under the canonical lock. Wait for its UI
+  // transition before navigation destroys the initiating document.
+  await expect(candidate).toHaveURL(/login/);
   await candidate.reload();
   await expect(candidate).toHaveURL(/login/);
-  expect(await candidate.evaluate(() => localStorage.getItem('devjobs.auth'))).toBeNull();
+  expect(await candidate.evaluate(() => JSON.parse(localStorage.getItem('devjobs.auth.v2'))?.credentials)).toBeNull();
   console.log(`Existing Ant Design development warnings: ${developmentWarnings.length}; browser errors: ${browserErrors.length}`);
   expect(browserErrors).toEqual([]);
   await candidateContext.close(); await recruiterContext.close(); await adminContext.close();

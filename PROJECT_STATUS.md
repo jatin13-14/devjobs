@@ -899,3 +899,1362 @@ separately so recording them does not change the tested snapshot. Hosted CI not
 run. M-06 remains open: legacy arrays unbounded; COUNT/sort/deep-offset costs and
 concurrent-write drift remain. No latency/memory claim. Stage 2B/2C not started;
 no push, merge, deployment or PR #1 change.
+
+## Milestone 2 Stage 2B.1 — recruiter company discovery — 2026-11-13
+
+Implemented bounded paginated recruiter discovery with caller-scoped trimmed
+case-insensitive name substring search (200 characters), exact UUID lookup and
+intersection semantics. Blank/malformed UUIDs and malformed search return 400
+only in opt-in mode; inaccessible IDs return zero results. Legacy arrays and
+ignored-filter behavior retained. ACTIVE/non-suspended authorization, fields,
+ordering and default/max 20/100 pagination unchanged. No models/migrations/index,
+dependency, production settings, authentication or ownership changes.
+
+Directory, manual-load/server-search picker, dashboard, sidebar and membership-
+dependent company/jobs/editor/detail screens consume paginated discovery. Exact
+membership lookup has loading/success/empty/error and retry; permissions clear
+on switching/logout, older responses are ignored/cancelled. Dashboard uses total
+count for sole-company selection and resolves explicit selections independently
+of page position. Tenant/job route identity remounts prevent old forms/details/
+applicant data carrying across selections. Company membership mutations revalidate.
+Member-list pagination UI and candidate skills remain outside this stage.
+
+Local verification: targeted API/pagination 20 and company/recruiter services 27
+PASS; full disposable PostgreSQL 171 passed / eight Redis-only skipped. Ruff,
+changed-code formatting, Django system/migration consistency, OpenAPI 39 paths/55
+operations and 16 runner safety tests PASS. Frontend lint, 75 tests/18 files and
+build PASS. Standalone Chromium 1/1 (36.1s), zero browser errors, includes 22-company
+discovery/search/exact selection/switch and existing three-role workflows.
+Exact commands, initial corrected failures and limitations: docs/TESTING_STRATEGY.md.
+API_CONVENTIONS/openapi updated. No hosted CI or production certification.
+M-06 remains open: other legacy arrays unbounded; COUNT/deep OFFSET and concurrent
+write drift remain. Stage 2B.2/2B.3/2C and M-07 not implemented.
+
+Starting branch feat/admin-workspace-final, HEAD
+6f4f6bab00f68aba9d558996d42f2e868255c3a7, committed tree
+2112fb7ec4d5a93e2f5f882eda877d778afaea82. Original operations-note bytes in this
+file preserved as an exact prefix; LOCAL_DEVELOPMENT.md unchanged by this task.
+Initial SHA-256 values: PROJECT_STATUS.md
+720f31fe6b44d5671f6588e45d311dea6af2853c2ba073124502a45d926363eb;
+LOCAL_DEVELOPMENT.md
+6f241a47289e316ad893d3e153a9bf5bb1b7c89d8cc1d56c4a4561c04c881e60.
+No staging, commit, push, merge, deployment or PR #1 modification.
+
+**Final Stage 2B.1 local acceptance PASS.** Concurrent runner: both PostgreSQL
+171/8 suites and Chromium 1/1 each (37.4s), both peer isolation checks PASS, zero
+browser errors. All five owned verification containers (including corrected
+initial attempt) cleaned; unrelated stopped welcome container retained. No
+verification listeners on ten logged final ports. Final branch/HEAD/committed tree
+unchanged, index empty, whitespace PASS; original operations notes verified.
+
+
+## Independent Stage 2B.1 audit stop — 2026-11-13
+
+**FAIL; stopped before staging or committing under the requested serious
+correctness-defect stop rule.** useCompanyMembership retains its previous result
+and keys it only by user ID, company ID and retry revision. After A resolves as
+OWNER, switch to B with its request pending, then return to A. The old A key
+matches again and restores canManage=true while the new A request is unresolved.
+This is a reproducible stale-permission UI failure; no backend authorization
+bypass or cross-tenant database disclosure has been demonstrated. A revoked or
+changed A membership can therefore retain stale management controls until lookup
+completes. Starting a new lookup must invalidate prior results even when returning
+to the same company; keep stale-response protection and cover this sequence.
+
+Added a narrow failing regression in
+frontend/src/features/companies/discovery.test.jsx. Independent command from
+frontend/: `npm test -- --run src/features/companies/discovery.test.jsx`:
+**FAIL, 1 failed / 10 passed**. The A -> B -> A assertion expects canManage=false
+but receives true. Implementation was left unchanged for remediation.
+
+Baseline verified: branch feat/admin-workspace-final, HEAD
+6f4f6bab00f68aba9d558996d42f2e868255c3a7, committed tree
+2112fb7ec4d5a93e2f5f882eda877d778afaea82; initial index empty and
+git diff --check PASS. Full backend/frontend, OpenAPI, runner safety, standalone
+and concurrent Chromium, Docker/listener inventory and staged-snapshot gates were
+not run after this stop. Historical passes do not satisfy this independent gate.
+No staged tree or commit created. No database, Docker resource or service accessed
+or modified. Original documentation bytes preserved as prefixes; unrelated
+LOCAL_DEVELOPMENT.md unchanged (SHA-256
+6f241a47289e316ad893d3e153a9bf5bb1b7c89d8cc1d56c4a4561c04c881e60).
+Initial whole PROJECT_STATUS.md SHA-256 before this audit:
+9866008e42e2b79fc9a1ff10861dc602353548b346570af431643f1636e4f859.
+No hosted CI verification, push, merge, deployment or PR #1 modification.
+M-06 remains open; Stage 2B.2/2B.3/2C and M-07 were not started.
+
+
+## Stage 2B.1 stale membership permission repair — 2026-11-13
+
+**PASS for focused remediation; independent audit remains pending.** Reproduced
+existing A -> B -> A regression: discovery suite failed 1/11 because returning to
+A matched the retained user/company/retry key and exposed cached OWNER permissions
+before the new lookup completed. Historical audit failure above is preserved.
+
+useCompanyMembership now rotates an explicit selection resolution identity in
+conditional render-time state when user ID, company ID or retry revision changes.
+The changing render returns loading without membership; subsequent renders accept
+only results carrying that exact identity. Returning to A or an earlier user is a
+new lookup. Effect cleanup retains both AbortController cancellation and a live
+flag to ignore completions after switching or unmount, including transports that
+ignore abort. Errors and missing memberships cannot recover old permissions.
+Hook API usage remains compatible; no backend/API/schema/dependency changes.
+
+Inspected all hook consumers in RecruiterPages and RecruiterLayout: management
+controls depend on current canManage/membership and pending lookups expose neither.
+CompanyPage uses a separate lookup, clears membership on reload, hides the form
+while loading and remounts by company ID. Existing tenant/job remounts and data
+identity guards retained; no consumer implementation changes needed. Server-side
+authorization remains authoritative and unchanged.
+
+Commands from frontend/:
+- `npm test -- --run src/features/companies/discovery.test.jsx`: PASS, 19 tests;
+  original A -> B -> A regression unchanged. Eight additional cases cover both
+  OWNER/MEMBER directions, every-render pending state and disabled controls,
+  retry failure/empty after OWNER, older OWNER responses after new MEMBER result,
+  aborted unmount and logout/user changes followed by original identity return.
+- `npm test -- --run src/features/companies/CompanyPage.test.jsx`: PASS, 2 tests.
+- `npm test -- --run src/features/jobs/pages/RecruiterPages.test.jsx`: PASS,
+  11 tests, including added actual Create job/Applicants controls pending lookup.
+- `npm run lint`: PASS.
+- `npm test`: PASS, 85 tests / 18 files. Existing non-failing JSDOM pseudo-element
+  getComputedStyle diagnostics remain.
+- `npm run build`: PASS; existing >500 kB chunk advisory remains (756.31 kB).
+Root `git diff --check`: PASS; `git status --short` reviewed;
+`git diff --cached --stat`: empty. Initial/final branch feat/admin-workspace-final,
+HEAD 6f4f6bab00f68aba9d558996d42f2e868255c3a7, committed tree
+2112fb7ec4d5a93e2f5f882eda877d778afaea82 unchanged. Five repair paths only:
+useCompanyMembership.js, discovery.test.jsx, RecruiterPages.test.jsx,
+PROJECT_STATUS.md and docs/TESTING_STRATEGY.md. Documentation is append-only;
+pre-repair PROJECT_STATUS bytes preserved as a prefix and LOCAL_DEVELOPMENT.md
+preserved byte-for-byte. Existing Stage 2B.1 work and regression retained.
+
+Remaining gates: repeat full independent audit and exact staged-snapshot
+verification separately; no database-backed, browser E2E, Docker or hosted CI
+checks run for this repair. Stage 2B.1 is uncommitted and M-06 remains open.
+No staging, commit, push, merge, deployment or PR #1 change. Stage 2B.2 not begun.
+
+
+## Resumed independent Stage 2B.1 audit stop — 2026-11-13
+
+**FAIL; stopped before staging or committing.** A separate stale-permission
+path remains in CompanyPage's CompanyEditor, which does not use the repaired
+useCompanyMembership hook. Its component key is company ID only; its load
+callback/effect depends on id/form, not authenticated user ID. After an OWNER
+lookup succeeds, changing the authenticated recruiter while retaining the same
+company route keeps the previous membership and enabled Save company and Add
+membership controls indefinitely, without initiating a new membership lookup.
+The repaired hook's identity invalidation therefore does not cover this screen.
+This is a stale UI authorization defect; no server-side authorization bypass or
+cross-tenant database disclosure was demonstrated. Invalidate editor permissions
+synchronously on user identity changes and guard obsolete asynchronous results;
+add identity-change coverage before resuming the independent acceptance gate.
+
+Added one narrow regression in CompanyPage.test.jsx; existing assertions retained.
+Commands from frontend/:
+- `npm test -- --run src/features/companies/CompanyPage.test.jsx`: FAIL,
+  one failed / two passed. Save company remains present and enabled after changing
+  the authenticated user from self to other-recruiter with the same company route.
+- `npm test -- --run src/features/companies/discovery.test.jsx src/features/jobs/pages/RecruiterPages.test.jsx`:
+  PASS, 30 tests / two files. These passes do not cover the separate editor defect.
+Root `git diff --check`: PASS; cached stat empty. Baseline branch
+feat/admin-workspace-final, HEAD 6f4f6bab00f68aba9d558996d42f2e868255c3a7,
+committed tree 2112fb7ec4d5a93e2f5f882eda877d778afaea82 unchanged.
+
+The hook uses conditional same-component render-time state updates rather than
+render-time ref mutation; identity comparison and effect live/abort guards were
+inspected. Full Strict Mode/interrupted-render verification was not completed;
+no full rendering-safety acceptance is claimed. Backend query construction and
+frontend consumers were partially inspected before the defect stop; full SQL,
+backend, lint/build, OpenAPI, runner safety, disposable PostgreSQL, standalone and
+concurrent Chromium, exact staged-snapshot and post-commit gates were not run in
+this resumed audit. Historical passes do not satisfy these gates. No staged tree
+or commit exists. No Docker/database/listener was created, accessed or modified;
+current Docker/listener inventory was not checked. Existing documentation bytes
+preserved as exact prefixes; LOCAL_DEVELOPMENT.md untouched by this audit.
+M-06 remains open (legacy arrays, COUNT/deep-offset costs, concurrent-write drift).
+Hosted CI was not run. No push, merge, deployment, PR #1 edit or Stage 2B.2/2B.3.
+
+
+## Stage 2B.1 CompanyPage cross-user permission repair — 2026-11-13
+
+**PASS for focused repair; independent acceptance audit remains pending.**
+Reproduced the unchanged audit regression: CompanyPage suite initially failed
+1/3 because CompanyEditor was keyed only by company ID and its local membership
+load did not depend on authenticated user identity. OWNER controls survived a
+same-route recruiter change. The earlier hook repair did not cover this editor;
+historical findings above are retained.
+
+CompanyPage now keys CompanyEditor by user ID and company ID, resetting forms,
+member lists, errors and pending operations on either change, including logout
+and A -> B -> A. Authorization reuses the existing repaired useCompanyMembership
+hook and its fresh resolution identity, abort and obsolete-response guards.
+Pending/error/empty lookups grant no management permissions. Exact bounded
+company-ID discovery remains unchanged; suspended/ineligible memberships remain
+excluded by the existing backend lookup. No new company discovery or ownership
+transfer UI was introduced. Existing CompanyPage has no ownership-transfer
+control; role choices remain ADMIN/MEMBER and owner/self protections remain.
+
+Company/details/member requests use effect-local live guards after each await;
+obsolete responses cannot populate the current editor. A commit-time layout-effect
+permit invalidates retained mutation handlers on identity change/unmount and
+revalidation; reload invalidates it immediately. Company create/edit, membership
+create, role/status updates and removal all pass through the guard. In-flight
+operations cannot update forms, navigate or trigger reload after invalidation.
+Already-issued HTTP mutations are not cancelled/undone; server authorization
+remains authoritative. No render-time ref mutation was added. Hook implementation
+is unchanged. No backend/API/schema/dependency/production configuration changes.
+
+Repair files only:
+- frontend/src/features/companies/CompanyPage.jsx
+- frontend/src/features/companies/CompanyPage.test.jsx
+- PROJECT_STATUS.md (append only)
+- docs/TESTING_STRATEGY.md (append only)
+
+Regression coverage retains the original test and adds OWNER -> MEMBER/ADMIN,
+unaffiliated/error/logout, A -> B -> A with late OWNER completion, same-user
+company switching, old member-data completion, membership mutation/revalidation
+failure and retry, post-logout mutation completion and retained form/role/status/
+remove callbacks. Pending assertions run before controlled responses resolve.
+Real Ant Design components render; thin test observers retain actual callbacks
+for invocation after identity changes. OWNER/ADMIN success and MEMBER restrictions
+pass. Missing membership also models the existing suspended-company exclusion;
+no live backend suspension test was run in this focused repair.
+
+Final commands from frontend/:
+- `npm test -- --run src/features/companies/CompanyPage.test.jsx`: PASS, 15 tests.
+- `npm test -- --run src/features/companies/discovery.test.jsx`: PASS, 19 tests.
+- `npm test -- --run src/features/jobs/pages/RecruiterPages.test.jsx`: PASS, 11 tests.
+- `npm run lint`: PASS, no warnings/errors.
+- `npm test`: PASS, 98 tests / 18 files. Existing non-failing JSDOM pseudo-element
+  getComputedStyle diagnostics remain.
+- `npm run build`: PASS; existing 756.31 kB chunk advisory remains.
+Root `git diff --check`: PASS; `git status --short` reviewed;
+`git diff --cached --stat`: empty. Intermediate repair checks exposed mock-once
+leakage after logout (fixed test reset) and a hook dependency lint warning (fixed
+by binding stable retry). One npm invocation from repository root failed ENOENT;
+all required commands were rerun successfully from frontend/.
+
+Branch feat/admin-workspace-final, HEAD
+6f4f6bab00f68aba9d558996d42f2e868255c3a7, committed tree
+2112fb7ec4d5a93e2f5f882eda877d778afaea82 unchanged; index empty. Prior documentation
+bytes preserved as exact prefixes; docs/LOCAL_DEVELOPMENT.md unchanged with SHA-256
+6f241a47289e316ad893d3e153a9bf5bb1b7c89d8cc1d56c4a4561c04c881e60.
+Existing Stage 2B.1 changes preserved. No staging, commit, push, merge, deployment
+or PR #1 modification. No backend/database/Docker/Chromium or hosted CI checks
+run. Full independent audit, rendering/concurrency review and exact staged-snapshot
+verification remain subsequent gates; this entry does not certify Stage 2B.1 as
+committed. M-06 remains open; Stage 2B.2/2B.3 not started.
+
+
+## Independent Stage 2B.1 audit stop — 2026-11-13 (CompanyJobsList)
+
+**FAIL; stopped before staging or committing.** Baseline confirmed:
+branch feat/admin-workspace-final, HEAD
+6f4f6bab00f68aba9d558996d42f2e868255c3a7, committed tree
+2112fb7ec4d5a93e2f5f882eda877d778afaea82; index empty.
+Independent consumer review found CompanyJobsList retains previous-user private
+job data on same-company authentication changes. Its wrapper key contains company
+and search only; its jobs fetch does not depend on authenticated identity and has
+no effect cleanup generation guard. The repaired membership hook hides content
+while resolving, then an empty membership allows rendering the retained jobs
+because jobsCompanyId still matches companyId. No server authorization bypass was
+demonstrated: this is previous-user data retained in frontend state.
+
+Added a narrow regression to RecruiterPages.test.jsx using the real membership
+hook and a controlled AuthContext identity change. OWNER loads a private draft;
+an unaffiliated user on the same route gets a fresh pending lookup, then an empty
+result. The old draft reappears after that result. The test supplies Forbidden
+for any subsequent jobs request; none is initiated by identity change.
+Required follow-up: bind job data and request lifetimes to authenticated identity,
+fail closed for missing membership, and audit other recruiter consumers' retained
+data and mutation callbacks before resuming acceptance. No repair performed under
+the explicit serious-defect stop rule.
+
+Command from frontend/:
+- `npm test -- --run src/features/jobs/pages/RecruiterPages.test.jsx`: FAIL,
+  1 failed / 11 passed; failure at the post-empty-lookup private-draft assertion.
+Root `git diff --check`: PASS before review and after documentation update.
+The two earlier repairs were inspected: hook selection identity rotates through
+conditional same-component state updates, with effect-local live/abort guards;
+CompanyPage keys by user/company and uses layout-effect mutation permits. No
+new defect in those two repairs was established, but complete Strict Mode and
+interrupted-render verification is not certified by this stopped audit.
+
+Backend SQL/runtime, full frontend lint/test/build, OpenAPI, runner safety,
+disposable PostgreSQL, standalone/concurrent Chromium and staged-export gates
+were not run. No staged tree or new commit exists. No Docker/database/listener
+was accessed or created; current resource inventory and cleanup were not checked.
+All pre-existing documentation bytes retained as exact prefixes;
+docs/LOCAL_DEVELOPMENT.md untouched. No API/schema/dependency/production-settings
+change. Hosted CI not run. M-06 remains open: legacy arrays, COUNT/deep-offset
+costs and concurrent-write drift. No remote operation, push, merge, deployment,
+PR #1 modification or Stage 2B.2/2B.3/2C work.
+
+
+## Stage 2B.1 private-job repair focused verification — 2026-11-13
+
+PASS for the current frontend working tree; independent acceptance remains pending.
+Starting snapshot already contained AuthorizedJobScreen, request cleanup, mutation
+lifetime guards and 24 recruiter-page tests. The first requested regression run
+passed all 24; the historical failing state was not reproduced in this session.
+Existing repair/test changes were preserved rather than replaced or attributed
+as newly implemented here. This session corrected dynamic component rendering
+with React createElement to satisfy the existing no-unused-vars lint rule.
+
+Historical root cause: CompanyJobsList owned private results by company only,
+retaining OWNER drafts across same-route user changes and empty membership results.
+Current repair keys authorization/data subtrees by authenticated user, company,
+job/application route and search. Pending/error authorization unmounts data owners;
+logout renders no private subtree. Returning A -> B -> A creates a fresh lookup
+and fetch. Fetch generations/cleanup ignore obsolete responses; layout-effect
+lifetimes guard retained mutation callbacks and post-request UI effects. No
+render-time ref mutation is introduced. Already-issued mutations are not undone.
+
+Backend CompanyJobsView was inspected, not changed: active OWNER/ADMIN may see
+private jobs; MEMBER and unaffiliated callers receive the existing published,
+non-expired public queryset. Empty membership therefore permits only a fresh
+server-authorized public fetch, never retained OWNER results. Filtering, ordering,
+pagination and API contracts remain unchanged. Related job detail/editor and
+applicant list/detail share the keyed boundary and obsolete-response safeguards;
+identity-change regressions cover private details, editable fields and applicant
+names. No separate broader defect was established in this focused review.
+
+Existing StrictMode regressions cover immediate and post-lookup absence for
+OWNER -> unaffiliated/MEMBER/ADMIN, pending/error/empty membership, retry/fetch
+failure, user A -> B -> A, company A -> B -> A, loaded/pending logout, late and
+out-of-order responses, reauthorized fresh drafts and current public-only results.
+The original unaffiliated regression remains unchanged.
+
+Commands from frontend/:
+- npm test -- --run src/features/jobs/pages/RecruiterPages.test.jsx: PASS, 24 tests.
+- npm test -- --run src/features/companies/discovery.test.jsx: PASS, 19 tests.
+- npm test -- --run src/features/companies/CompanyPage.test.jsx: PASS, 15 tests.
+- npm run lint: initial FAIL (unused Component); PASS after createElement fix.
+- npm test: PASS, 111 tests / 18 files; existing non-failing JSDOM pseudo-element
+  getComputedStyle diagnostics remain.
+- npm run build: PASS; existing 756.31 kB chunk advisory remains.
+Root git diff --check: PASS; git status --short inspected; cached stat empty.
+An inspection command used nonexistent AuthProvider.jsx and failed; the actual
+AuthContext.jsx was subsequently read. No backend/PostgreSQL/Chromium audit run.
+
+Repair-related paths: frontend/src/features/jobs/pages/RecruiterPages.jsx and
+RecruiterPages.test.jsx (implementation/regressions already present at entry),
+PROJECT_STATUS.md and docs/TESTING_STRATEGY.md (this append-only verification).
+Earlier membership and CompanyPage repairs retained. LOCAL_DEVELOPMENT.md remains
+untouched, SHA-256 6f241a47289e316ad893d3e153a9bf5bb1b7c89d8cc1d56c4a4561c04c881e60.
+No backend/API/schema/dependency/production-settings change in this session.
+Branch feat/admin-workspace-final; HEAD 6f4f6bab00f68aba9d558996d42f2e868255c3a7;
+committed tree 2112fb7ec4d5a93e2f5f882eda877d778afaea82; index empty.
+Nothing staged, committed, pushed, merged, deployed or changed in PR #1.
+Independent full audit, disposable PostgreSQL, standalone/concurrent Chromium,
+exact staged-snapshot verification and hosted CI remain gates. Stage 2B.1 is
+uncommitted. M-06 remains open (legacy arrays, COUNT/deep-offset costs and
+concurrent-write drift). Stage 2B.2/2B.3 not started.
+
+
+## Stage 2B.1 final cross-identity audit stop — 2026-11-13 (CompanyDirectory)
+
+FAIL; stopped before staging or committing under the requested serious-defect rule.
+Verified starting branch feat/admin-workspace-final, HEAD
+6f4f6bab00f68aba9d558996d42f2e868255c3a7 and committed tree
+2112fb7ec4d5a93e2f5f882eda877d778afaea82; index empty.
+
+CompanyDirectory retains previous-user membership data across same-route account
+changes. Its state key contains page/search only, and its request effect has no
+authenticated-user dependency. A controlled auth identity change from an OWNER
+to an unaffiliated user leaves the original company card and OWNER membership
+in the rendered directory. This exposes previous-user membership information;
+no server authorization bypass was established. CompanyPicker also lacks a user
+dependency, but independent reproduction of that component was not completed.
+Dashboard/profile rendering and the remaining recruiter consumers are not certified.
+
+Added a narrow regression in frontend/src/features/companies/discovery.test.jsx
+using the existing controlled useAuth mock and real CompanyDirectory rendering.
+The new identity's response is held pending; the immediate stale-card assertion
+fails. Existing 19 tests pass. No implementation repair was performed.
+Required follow-up: bind directory membership state and request lifetime to auth
+identity, invalidate rendered memberships synchronously, and cover logout,
+returning identities, late responses and failure/retry before resuming acceptance.
+
+Command from frontend/:
+- npm test -- --run src/features/companies/discovery.test.jsx: FAIL, 1 failed /
+  19 passed (20 total); previous-user company card remains after identity change.
+
+No backend runtime/SQL, PostgreSQL, full frontend lint/test/build, OpenAPI,
+runner-safety, standalone/concurrent Chromium or exact staged-export checks ran.
+No staged tree or commit was created. No Docker/database/listener was accessed or
+created by this audit; existing resource inventory/cleanup status is unverified.
+No development database was accessed. No API/schema/dependency/production-settings
+change. Earlier documentation bytes preserved by appending; LOCAL_DEVELOPMENT.md
+untouched. M-06 remains open: legacy arrays, COUNT/deep-offset costs and
+concurrent-write drift. Hosted CI not run. No push, merge, deployment or PR #1
+modification; Stage 2B.2/2B.3 not started.
+
+
+## Stage 2B.1 CompanyDirectory identity repair — 2026-11-13
+
+PASS for focused frontend repair; independent acceptance remains pending.
+Reproduced the original discovery regression: 1 failed / 19 passed, with the
+previous user's company card and OWNER label still visible after an account
+change. The regression is preserved unchanged. Root cause: directory data and
+request dependencies were associated only with page/search, not authenticated
+identity.
+
+CompanyDirectory now owns results inside a stable user-ID-keyed subtree, rendering
+no membership directory on logout. RecruiterLayout similarly keys the authenticated
+workspace, including Outlet, by user ID. This small shared boundary resets profile,
+dashboard selection, picker pages/search, exact membership lookups and screen state
+on identity changes without remounting the application or changing public routes.
+Ordinary same-user rerenders preserve state; persisted theme preference survives.
+Existing hook and CompanyPage/job-screen authorization repairs remain intact.
+CompanyPicker is used inside the recruiter dashboard; its parent selection and
+request state are both covered by the shared boundary. It is not independently
+hardened for use outside that boundary. No further independent serious defect was
+established in this focused review; this is not a complete consumer audit.
+
+Remounting synchronously removes prior memberships and role labels. A -> B -> A
+starts a new data owner and fresh requests. Existing effect-local live flags and
+AbortControllers prevent obsolete directory, picker and membership completions
+from updating the new owner even if transport ignores abort. Search/page URL
+parameters remain current route input, while results are newly fetched per user;
+no automatic unbounded fetching was added. Existing server authorization remains
+authoritative. No render-time ref mutation, dependencies, backend/API/schema or
+production configuration change.
+
+Regression coverage: original same-route OWNER -> unaffiliated pending response;
+StrictMode OWNER -> MEMBER/ADMIN/empty/error, retry and fresh membership results;
+user A -> B -> A, loaded/pending logout, late/out-of-order search and pagination
+responses and aborted old signals. Workspace regressions cover stale selection,
+ordinary-rerender preservation, profile reset, returning identities, logout,
+pending picker load-more/search and exact-company lookup completions. Real Ant
+Design controls and actual routed Outlet are used. Existing membership-hook,
+CompanyPage and private-job tests remain passing.
+
+Commands from frontend/ (final results):
+- `npm test -- --run src/features/companies/discovery.test.jsx`: PASS, 26 tests.
+- `npm test -- --run src/features/companies/CompanyPage.test.jsx`: PASS, 15 tests.
+- `npm test -- --run src/features/jobs/pages/RecruiterPages.test.jsx`: PASS, 24 tests.
+- `npm test -- --run src/components/templates/RecruiterLayout.test.jsx`: PASS, 5 tests.
+- `npm run lint`: PASS.
+- `npm test`: PASS, 122 tests / 18 files; existing non-failing JSDOM pseudo-element
+  getComputedStyle diagnostics remain.
+- `npm run build`: PASS; 756.38 kB main chunk retains the existing size advisory.
+Root `git diff --check`: PASS. Git status reviewed; cached stat empty.
+An initial test-writing script ran from frontend/ with root-relative paths and
+failed before writing; it was rerun successfully from root. An inspection used
+nonexistent frontend/src/App.jsx; actual layout usages were subsequently located.
+
+Files changed by this repair only: frontend/src/features/jobs/pages/CompanyDirectory.jsx,
+frontend/src/features/companies/discovery.test.jsx,
+frontend/src/components/templates/RecruiterLayout.jsx,
+frontend/src/components/templates/RecruiterLayout.test.jsx,
+PROJECT_STATUS.md and docs/TESTING_STRATEGY.md (append only).
+Prior Stage 2B.1 work and operations notes preserved. LOCAL_DEVELOPMENT.md unchanged,
+SHA-256 6f241a47289e316ad893d3e153a9bf5bb1b7c89d8cc1d56c4a4561c04c881e60.
+Branch feat/admin-workspace-final; HEAD 6f4f6bab00f68aba9d558996d42f2e868255c3a7;
+committed tree 2112fb7ec4d5a93e2f5f882eda877d778afaea82; staging index empty.
+No staging, commit, push, merge, deployment, PR #1 modification or remote operation.
+No PostgreSQL, Docker, Chromium or hosted CI verification ran. Independent full
+review, disposable PostgreSQL, standalone/concurrent Chromium, exact staged-export
+verification and hosted CI remain audit gates. Stage 2B.1 is uncommitted; M-06
+remains open (legacy arrays, COUNT/deep-offset costs, concurrent-write drift).
+Stage 2B.2/2B.3 not started.
+
+
+## Stage 2B.1 independent audit stop — 2026-11-13 (cross-account HTTP replay)
+
+FAIL; stopped on a serious defect before staging or committing. Starting and
+ending branch feat/admin-workspace-final; HEAD
+6f4f6bab00f68aba9d558996d42f2e868255c3a7; committed tree
+2112fb7ec4d5a93e2f5f882eda877d778afaea82. Index empty.
+
+Inspected PublicLayout/App routing: recruiter routes do traverse RecruiterLayout,
+whose workspace is keyed by stable user.id; directory has its own user boundary.
+These boundaries discard local state but do not cancel shared HTTP retries.
+Independent complete acceptance of all four repairs is not certified by this stop.
+
+Serious finding: frontend/src/features/auth/api.js handles a late 401 by reading
+current storage and retrying whenever its access token differs from the original
+request token, without checking the original request identity. An A-account PATCH
+held pending, followed by login B and then A's 401, is replayed with B's bearer
+and A's original payload. If B is authorized for the target, the server can accept
+an unintended mutation as B. This is a client identity-confusion defect; no server
+permission bypass is asserted. Remount/lifetime guards cannot prevent the HTTP
+interceptor from issuing this retry. The during-refresh identity check does not
+cover the earlier newer-token retry branch.
+
+Added a narrow failing regression to frontend/src/features/auth/api.test.js using
+the real Axios interceptors and a controlled adapter, synthetic recruiter tokens
+and a synthetic PATCH target. It explicitly observes B's token on the replay.
+No implementation repair, authentication-model or API-contract change was made.
+Required follow-up: bind requests/retries to their originating session and reject
+cross-session replay, while retaining same-session refresh behavior; test late 401,
+logout, returning identities and pending refresh before resuming this audit.
+
+Command from frontend/: npm test -- --run src/features/auth/api.test.js
+FAIL twice: 1 failed / 6 passed (7 total); final assertion shows the old PATCH
+payload sent with Bearer recruiter-b-access. Root git diff --check PASS;
+baseline/status/cached stat inspected (index empty). One inspection referenced a
+nonexistent app/router.jsx; actual app/App.jsx and PublicLayout were then read.
+
+Backend targeted/service/SQL checks, full disposable PostgreSQL, Ruff/format,
+Django/migration/OpenAPI/runner safety, full frontend lint/test/build, standalone
+and concurrent Chromium and exact staged-export gates were not run in this audit.
+No staged-tree SHA or commit SHA was created. All pre-existing modified/untracked
+files remain uncommitted, plus the auth regression and these append-only notes.
+No Docker resource, listener or database was accessed/created; existing cleanup
+and listener status is unverified. Development databases were not accessed.
+LOCAL_DEVELOPMENT.md and prior documentation bytes preserved. No production
+settings, schema, dependencies or implementation changed. M-06 remains open:
+legacy arrays, COUNT/deep-offset costs and concurrent-write drift. Hosted CI not
+run. No push, merge, deployment, PR modification or Stage 2B.2 work.
+
+
+## Focused cross-account HTTP replay repair — 2026-11-13
+
+PASS for focused frontend security repair; independent Stage 2B.1 acceptance
+remains pending. Reproduced the preserved original regression before editing:
+`npm test -- --run src/features/auth/api.test.js` FAIL, 1 failed / 6 passed;
+A's PATCH payload was observed with B's bearer token. The newer-access-token
+retry branch had no originating-session check; the refresh branch compared user
+IDs, which cannot distinguish logout/re-login as the same user.
+
+The shared HTTP client now captures a local session generation synchronously at
+its callable/request/method boundary before Axios queues interceptors. Every
+public writeAuth (login, logout or replacement) rotates a random local-storage
+session marker, even for identical credentials. Credential/marker snapshots and
+storage-event invalidation detect external replacements. Credentials remain the
+existing authentication source of truth; no backend token semantics change.
+Only the internal refresh persistence path retains the generation.
+
+Request interception rejects obsolete generations before attaching credentials.
+Both successful and failed obsolete responses reject with Axios ERR_CANCELED
+and sessionExpired=true. Response handling checks before refresh, credential
+mutation, newer-token retry and after awaiting refresh; retry request interception
+checks again before attaching its bearer. Refresh flights are scoped by generation;
+a stale flight cannot clear the replacement flight. One current-session flight
+persists rotated tokens once for all waiters. Stale refresh success/failure cannot
+restore/overwrite credentials or signal logout for a replacement login. Retries
+remain bounded to one and authentication endpoints bypass refresh recursion.
+Requests already dispatched are not undone or transport-aborted; their obsolete
+completions and retries are invalidated. Server authorization remains authoritative.
+
+Audited AuthContext/AuthPages, storage access, HTTP initialization and API service
+imports: production login/logout use writeAuth; all application API services use
+the shared http client; plainHttp is used only for refresh. No independent auth
+truth, dependencies, backend/API/schema/migration or production-settings changes.
+The original cross-account PATCH regression is unchanged. One existing late-401
+test now releases its deferred response after actual refresh persistence instead
+of simulating refresh with the public login/replacement helper; its success and
+single-refresh assertions remain intact.
+
+Controlled adapters/deferred promises verify actual bearer headers and payloads
+for GET/POST/PUT/PATCH/DELETE across account switching and same-session refresh,
+pending refresh success/failure during B login, B's independent concurrent refresh,
+no stale token overwrite/logout, concurrent old requests, identical re-login,
+logout/re-login as A, external storage replacement, delayed initial interception,
+delayed retry interception and obsolete successful responses. Existing concurrent
+refresh, missing restoration, endpoint exclusion and bounded-loop tests pass.
+
+Commands from frontend/:
+- `npm test -- --run src/features/auth/api.test.js`: PASS, 26 tests.
+- `npm test -- --run src/features/companies/discovery.test.jsx`: PASS, 26 tests.
+- `npm test -- --run src/features/companies/CompanyPage.test.jsx`: PASS, 15 tests.
+- `npm test -- --run src/features/jobs/pages/RecruiterPages.test.jsx`: PASS, 24 tests.
+- `npm test -- --run src/components/templates/RecruiterLayout.test.jsx`: PASS, 5 tests.
+- `npm run lint`: PASS.
+- `npm test`: PASS, 142 tests / 18 files; existing non-failing JSDOM
+  getComputedStyle pseudo-element diagnostics remain.
+- `npm run build`: PASS; existing main-chunk size advisory remains (~757 kB).
+Root `git diff --check`: PASS; `git status --short` inspected;
+`git diff --cached --stat`: empty.
+
+Files changed by this repair only: frontend/src/features/auth/api.js,
+frontend/src/features/auth/api.test.js, PROJECT_STATUS.md and
+ docs/TESTING_STRATEGY.md (documentation appended). Earlier Stage 2B.1 changes,
+regressions and operations notes preserved. LOCAL_DEVELOPMENT.md untouched,
+SHA-256 6f241a47289e316ad893d3e153a9bf5bb1b7c89d8cc1d56c4a4561c04c881e60.
+Branch feat/admin-workspace-final; HEAD
+6f4f6bab00f68aba9d558996d42f2e868255c3a7; committed tree
+2112fb7ec4d5a93e2f5f882eda877d778afaea82; index empty.
+No staging, commit, push, merge, deployment or PR #1 modification. No PostgreSQL,
+Docker, Chromium or hosted CI run. Remaining gates: full independent review,
+disposable PostgreSQL, standalone/concurrent Chromium, exact staged-export checks
+and hosted CI. Stage 2B.1 remains uncommitted; M-06 remains open (legacy arrays,
+COUNT/deep-offset cost and concurrent-write drift). Stage 2B.2/2B.3 not started.
+
+
+## Stage 2B.1 independent authentication continuation audit stop — 2026-11-13
+
+FAIL; stopped on a serious authentication lifecycle defect before staging or
+committing. Baseline matches branch feat/admin-workspace-final, HEAD
+6f4f6bab00f68aba9d558996d42f2e868255c3a7 and committed tree
+2112fb7ec4d5a93e2f5f882eda877d778afaea82. Index empty.
+
+AuthContext.jsx login awaits authApi.login and then unconditionally calls
+writeAuth/setAuth. The HTTP response interceptor checks session generation before
+this promise continuation, but the provider does not revalidate ownership before
+persisting credentials. A logout between completed API validation and provider
+continuation is overwritten by the old login result, restoring authentication.
+This fails the requested guarantee that obsolete responses cannot mutate a
+replacement authentication state. No new cross-account HTTP mutation replay or
+server authorization bypass was established by this reproduction.
+
+Added frontend/src/features/auth/AuthContext.test.jsx, a narrow controlled
+microtask-ordering regression. It uses the real AuthProvider, authApi login and
+Axios interceptors with a synthetic adapter, then wraps authApi.login only to
+register logout on the completed API promise before the provider continuation.
+This deliberately exercises the asynchronous boundary; it does not claim a
+manual browser reproduction. The request URL/payload assertion passes and the
+stored-auth-is-null assertion fails: synthetic login credentials are restored.
+No implementation repair was made. Follow-up: carry originating session ownership
+through the provider credential commit and reject obsolete login continuations,
+including logout, replacement login and identical-user re-login.
+
+Command from frontend/:
+`npm test -- --run src/features/auth/AuthContext.test.jsx src/features/auth/api.test.js`
+FAIL: 1 failed / 26 passed, 2 files. Existing HTTP replay/refresh tests all pass;
+provider regression fails. An initial shell write used a root-relative path from
+frontend/ and failed without writing; that initial test invocation ran only the
+existing API file (26 passed). The test was then added at the correct path.
+Root `git diff --check` PASS; final baseline/index/status rechecked.
+
+Remaining recruiter identity/rendering, backend authorization/SQL/pagination,
+frontend integration, full lint/test/build, OpenAPI 39/55 inventory, runner safety,
+disposable PostgreSQL, standalone/concurrent Chromium and exact staged-export
+verification gates were not completed. No staged/tested tree or new commit exists.
+No Docker, database or listener operation was performed; existing resources and
+listeners were not inventoried and their status is unverified. No development
+database was accessed. Only this regression and append-only documentation were
+added; prior implementation, regressions and operations notes preserved.
+LOCAL_DEVELOPMENT.md, API/schema/migrations/dependencies/production settings were
+not changed by this audit. M-06 remains open (legacy arrays, COUNT/deep-offset
+costs, concurrent-write drift). Hosted CI not run. Nothing pushed, merged,
+deployed or changed in PR #1; Stage 2B.2/2B.3 not started.
+
+
+## Focused stale login continuation security repair — 2026-11-13
+
+PASS for focused frontend repair; independent Stage 2B.1 acceptance remains pending.
+Baseline reproduced with the exact requested auth command: 1 failed / 26 passed.
+The original controlled regression is preserved: logout after Axios validation but
+before AuthProvider resumes previously allowed unconditional writeAuth/setAuth to
+restore the obsolete login. No backend authentication contract change is needed.
+
+Pending login ownership now lives alongside the existing session-generation logic
+in auth/api.js. Each beginLogin creates a unique operation associated with the
+current session generation and supersedes the previous pending operation. Starting
+an attempt does not rotate the established session or invalidate ordinary requests.
+Logout/replacement writeAuth rotates the existing session generation, including
+identical-user re-login. Same-session refresh retains that generation. commitLogin
+synchronously validates operation identity and session generation, writes credentials,
+and consumes ownership. AuthProvider immediately sets its state in the same call
+stack, without an await. Stale success/failure rejects with Axios ERR_CANCELED and
+sessionExpired=true; failures never clear the active session. Current login failure
+retains existing credentials, as before. Effect cleanup cancels the provider-owned
+pending operation; Strict Mode cleanup/setup performs no credential writes. No
+render-time mutation or additional persisted authentication source is introduced.
+
+All production credential writers remain the shared writeAuth and internal refresh
+persistence path. Existing Axios request/retry generation protections are unchanged
+by this repair. Provider and shared credentials agree on current login/logout;
+refresh changes stored tokens while provider continues to represent the same user.
+AuthPages only navigates after successful login, so cancellation rejects that path.
+A real LoginPage/router regression verifies no authenticated destination is reached
+after logout at the validated-response boundary. No additional independent serious
+defect was established within this focused scope; this is not a complete audit.
+
+AuthProvider tests cover the original boundary, pending logout, validated-response
+supersession, older success/failure after B succeeds, three concurrent attempts,
+same-user logout/re-login, current success/failure, StrictMode unmount/remount,
+no stale token/state/navigation commit, and real same-session refresh while another
+login is pending. They assert stored credentials and rendered user state. Existing
+26 Axios regressions preserve cross-account replay and refresh coverage.
+
+Commands from frontend/ (final results; output logs under /tmp/devjobs-login-*):
+- npm test -- --run src/features/auth/AuthContext.test.jsx src/features/auth/api.test.js:
+  PASS, 37 tests (11 provider + 26 Axios); original baseline FAIL recorded above.
+- npm test -- --run src/features/companies/discovery.test.jsx: PASS, 26 tests.
+- npm test -- --run src/features/companies/CompanyPage.test.jsx: PASS, 15 tests.
+- npm test -- --run src/features/jobs/pages/RecruiterPages.test.jsx: PASS, 24 tests.
+- npm test -- --run src/components/templates/RecruiterLayout.test.jsx: PASS, 5 tests.
+- npm run lint: PASS, including final added navigation test.
+- npm test: PASS, 153 tests / 19 files on final source; existing non-failing JSDOM
+  getComputedStyle pseudo-element diagnostics remain.
+- npm run build: PASS; existing main-chunk advisory remains (757.69 kB).
+Root git diff --check: PASS; git status --short inspected;
+git diff --cached --stat: empty. One initial inspection referenced nonexistent
+features/auth/pages/AuthPages.jsx; actual features/auth/AuthPages.jsx was read.
+
+Files modified by this repair only: frontend/src/features/auth/AuthContext.jsx,
+frontend/src/features/auth/api.js (pending-operation helpers only),
+frontend/src/features/auth/AuthContext.test.jsx (original regression retained),
+PROJECT_STATUS.md and docs/TESTING_STRATEGY.md (append only). Existing Stage 2B.1
+work/security tests retained. LOCAL_DEVELOPMENT.md preserved, SHA-256
+6f241a47289e316ad893d3e153a9bf5bb1b7c89d8cc1d56c4a4561c04c881e60.
+No public API/schema/migration/dependency/backend/production-settings changes.
+Branch feat/admin-workspace-final; HEAD 6f4f6bab00f68aba9d558996d42f2e868255c3a7;
+committed tree 2112fb7ec4d5a93e2f5f882eda877d778afaea82; index empty.
+No staging, commit, push, merge, deployment, PR #1 modification or remote action.
+No backend/PostgreSQL/Docker/Chromium audit run. Independent full review,
+disposable PostgreSQL, standalone/concurrent Chromium, exact staged-export checks
+and hosted CI remain gates. Already-dispatched server requests are not undone by
+client cancellation. Stage 2B.1 remains uncommitted; M-06 remains open (legacy
+arrays, COUNT/deep-offset costs, concurrent-write drift). Stage 2B.2/2B.3 not started.
+
+
+## Stage 2B.1 Gate 1 independent audit stop — 2026-11-14
+
+FAIL; stopped on a serious cross-tab authentication identity-isolation defect.
+Starting branch feat/admin-workspace-final; HEAD
+6f4f6bab00f68aba9d558996d42f2e868255c3a7; committed tree
+2112fb7ec4d5a93e2f5f882eda877d778afaea82. Baseline matches the requested values.
+Working-tree status, diff summary and all untracked filenames inspected. Existing
+Stage 2B.1 implementation/regressions and unrelated operations notes preserved.
+
+Finding: auth/api.js observes localStorage replacement/storage events and rotates
+its request generation, but AuthProvider initializes from readAuth only once and
+listens only for devjobs:logout. A different same-origin tab logging in as B
+changes shared credentials without updating A's mounted provider. The provider,
+route guards and user-keyed recruiter boundaries continue representing A; newly
+created requests capture B's generation and attach B's token. This permits A's
+visible editor payload to be dispatched as B. Existing request-generation checks
+correctly reject old requests but do not protect new requests from a stale UI
+identity. No server permission bypass is asserted; a mutation can succeed if B
+is authorized for its target. This also leaves prior-user UI state mounted.
+
+Added one narrow regression in frontend/src/features/auth/AuthContext.test.jsx.
+It uses the real AuthProvider, real HTTP interceptors, synthetic credentials and
+a controlled Axios adapter. A minimal identity-owned editor is rendered as A;
+shared storage is replaced with B plus a storage notification, simulating another
+tab. Clicking the currently rendered editor (not a retained stale callback)
+observes Authorization Bearer b-access with title 'a private draft'. The safety
+assertion fails on exactly that combination. This is a deterministic JSDOM
+reproduction, not a Chromium or full CompanyPage integration reproduction.
+Implementation was not changed and existing assertions were not weakened.
+
+Command from frontend/:
+`npm test -- --run src/features/auth/AuthContext.test.jsx src/features/auth/api.test.js`
+FAIL: 1 failed / 37 passed, 38 tests across 2 files; all prior 11 provider and
+26 Axios tests pass. New provider regression fails on the actual header/payload.
+Root `git diff --check`: PASS. Branch/HEAD/tree, git status --short and
+`git diff --cached --stat` rechecked at delivery; index empty.
+
+Review before stopping covered auth lifecycle/commit/refresh code, auth tests,
+auth pages/routing, storage/HTTP consumers, recruiter identity boundaries and
+membership/company code. Existing synchronous login commit and HTTP generation
+checks do not resolve the reproduced provider/storage mismatch. All six repairs,
+remaining recruiter consumers, React concurrent-rendering safety and complete
+regression quality are NOT independently certified by this stopped audit.
+Remaining requested discovery/CompanyPage/RecruiterPages/RecruiterLayout tests,
+full frontend tests, lint and build were not run after the serious finding.
+
+Follow-up: synchronize or invalidate mounted authentication consumers on external
+session replacement/logout and ensure visible identity, private state and request
+ownership agree before accepting another action. Preserve ordinary same-session
+refresh behavior and add external logout/account-switch integration coverage.
+Resume Gate 1 after repair; Gate 2 and subsequent disposable PostgreSQL,
+standalone/concurrent Chromium, exact staged-export and hosted CI checks remain.
+Stage 2B.1 remains uncommitted; M-06 remains open (legacy arrays, COUNT/deep-offset
+costs and concurrent-write drift). Stage 2B.2 was not started.
+
+Audit changes only: this append-only entry in PROJECT_STATUS.md and
+ docs/TESTING_STRATEGY.md, plus the regression in AuthContext.test.jsx.
+No API/schema/migration/dependency/backend/production-settings change.
+LOCAL_DEVELOPMENT.md was not edited. No PostgreSQL, Docker, Chromium, database,
+listener or remote operation performed. No staging, commit, push, merge,
+deployment or PR #1 modification occurred.
+
+
+## Security Repair 7 design-decision stop — 2026-11-14
+
+FAIL / repair not implemented. The original cross-tab regression was preserved
+unchanged and reproduced: A's rendered editor dispatches its private draft with
+B's Authorization header. AuthProvider reads credentials only at initialization
+and observes only same-document devjobs:logout. The HTTP proxy binds newly
+initiated operations to current storage, without the initiating UI's ownership.
+No backend authorization bypass is asserted.
+
+Inspection also identified a cross-tab coordination constraint, distinct from
+the reproduced regression. writeAuth synchronously writes the session marker and
+credentials as separate localStorage operations. Refresh checks a process-local
+generation before a separate read/merge/write; failure similarly checks before
+clearing storage. Another document can write between those operations. This is a
+static concurrency finding, not an additional controlled runtime reproduction.
+The current generation includes token strings, so an external same-session token
+refresh is also treated as a session change. A storage-event subscription alone
+would neither close the pre-event initiation race nor serialize credential commits.
+All production protected services inspected use the shared HTTP client;
+plainHttp is used for refresh only. No subscription/epoch/dispatch repair is claimed.
+
+Stopped at the request's explicit requirement to report before a broader
+authentication-contract change. Proposed decision: replace split storage with
+one credential/session-epoch record, preserving the epoch on refresh and replacing
+it on login/logout, including same-user re-login. Serialize ALL credential writers
+across documents (for example with a supported browser lock), revalidate ownership
+inside that serialization boundary, and make the affected synchronous commit
+lifecycle asynchronous. Browser-support/fail-closed behavior and existing-tab
+migration must be specified. This is an internal browser lifecycle change, not a
+proposal to change JWT endpoints or backend permissions. Owner approval requested;
+no such change implemented. No sensitive event payloads or new dependencies added.
+
+The eventual repair must bind requests to provider-owned session capabilities,
+validate those capabilities at initiation and immediately before transport, and
+retain ownership through refresh/retry. External adoption must validate identity
+and remount account/session-specific state, including same-user re-login; external
+logout must invalidate it. Token rotation within the same epoch must retain valid
+operations. These are proposed guarantees, not verified behavior. Stale-editor
+safety currently FAILS; cross-tab same-session refresh continuity is not repaired.
+
+Commands run from frontend/ on unchanged implementation:
+- npm test -- --run src/features/auth/AuthContext.test.jsx src/features/auth/api.test.js:
+  FAIL, 37 passed / 1 failed (provider 11 passed / 1 failed; Axios 26 passed).
+- npm test -- --run src/features/companies/discovery.test.jsx: PASS, 26 tests.
+- npm test -- --run src/features/companies/CompanyPage.test.jsx: PASS, 15 tests.
+- npm test -- --run src/features/jobs/pages/RecruiterPages.test.jsx: PASS, 24 tests.
+- npm test -- --run src/components/templates/RecruiterLayout.test.jsx: PASS, 5 tests.
+- npm run lint: PASS.
+- npm test: FAIL, 153 passed / 1 failed, 19 files; same cross-tab regression.
+  Existing JSDOM getComputedStyle pseudo-element diagnostics also appeared.
+- npm run build: PASS; existing 757.69 kB main-chunk advisory remains.
+Root git diff --check: PASS; git status --short inspected;
+git diff --cached --stat: empty. Earlier six repairs' regression tests remain
+passing; all seven repairs cannot be certified because repair 7 still fails.
+
+Only PROJECT_STATUS.md and docs/TESTING_STRATEGY.md appended by this attempt.
+All source/tests, prior Stage 2B.1 work and unrelated operations notes preserved.
+LOCAL_DEVELOPMENT.md SHA-256 remains
+6f241a47289e316ad893d3e153a9bf5bb1b7c89d8cc1d56c4a4561c04c881e60.
+No API/schema/backend/production-settings/dependency changes.
+Branch feat/admin-workspace-final; HEAD
+6f4f6bab00f68aba9d558996d42f2e868255c3a7; committed tree
+2112fb7ec4d5a93e2f5f882eda877d778afaea82; index empty.
+Remaining gates: approved session design and repair, complete new cross-tab/race
+regressions, independent review, disposable PostgreSQL, standalone/concurrent
+Chromium, exact staged-export checks and hosted CI. No PostgreSQL, Docker or
+Chromium run. Stage 2B.1 remains uncommitted; M-06 remains open (legacy arrays,
+COUNT/deep-offset costs and concurrent-write drift). Stage 2B.2/2B.3 not started.
+Nothing staged, committed, pushed, merged, deployed or changed in PR #1.
+
+
+## Security Repair 7 canonical-session continuation — 2026-11-14
+
+Owner approved Option 1: the external-tab regression now uses an independent
+createSessionStore writer with shared storage/Web Locks and separate document
+operation state. A remains mounted while B commits, before A receives a storage
+notification. The real mounted editor first demonstrates A's actual bearer header
+and JSON payload at the Axios adapter, then attempts its existing A draft after
+B commits. That attempt must reject with ERR_CANCELED/sessionExpired before any
+additional adapter dispatch. The explicit forbidden B-header/A-payload assertion
+and regression remain; no test is deleted or skipped.
+
+A separate legacy split-storage integration test proves legacy records alone
+produce neither provider authentication nor a bearer header, and cannot replace
+an established canonical A session or its dispatch ownership. Additional provider
+tests verify external same-epoch token rotation preserves A's request payload
+and uses the rotated token, and external replacement/logout remount private state.
+
+Connected auth/api.js and AuthContext.jsx to the existing canonical session store.
+All login/logout/refresh/expiry commits use the serialized canonical protocol;
+request initiation uses the mounted provider's opaque capability, then actual
+adapter dispatch revalidates it under a shared lock before reading the token.
+Axios configuration preserves the opaque capability through retries. Provider
+subscriptions reread current storage, epoch transitions remount private state,
+and children mount after request ownership is installed. Login and logout are
+asynchronous; existing authenticated test fixtures now await the canonical writer.
+JSDOM uses a shared deterministic lock queue; native browser locking is not
+claimed verified. Missing Web Locks fails closed for authenticated session work.
+Legacy keys are deliberately ignored, so existing legacy sessions require login.
+No new dependency, public HTTP API, schema, migration or backend/settings change
+was made by this continuation. Existing unrelated working-tree changes remain.
+
+Final commands from frontend/:
+- npm test -- --run src/features/auth/AuthContext.test.jsx src/features/auth/api.test.js src/features/auth/sessionStore.test.js:
+  PASS, 54 tests across 3 files.
+- npm test: PASS, 170 tests across 20 files.
+- npm run lint: PASS.
+- npm run build: PASS; 761.80 kB main-chunk advisory remains.
+Root git diff --check: PASS. Earlier intermediate integration runs failed and
+were repaired before these final runs. Existing JSDOM pseudo-element
+getComputedStyle diagnostics remain non-failing.
+
+PROJECT_STATUS.md and docs/TESTING_STRATEGY.md updated with this result.
+Focused verification is complete; independent review, native multi-tab browser
+coverage, backend/PostgreSQL, standalone/concurrent Chromium, exact staged-export
+and hosted CI gates have not been run by this continuation. Already dispatched
+server requests cannot be undone by client cancellation. The in-memory JSDOM
+scheduler checks protocol ordering, not browser implementation correctness.
+Stage 2B.1 remains uncommitted; M-06 remains open; Stage 2B.2/2B.3 not started.
+No staging, commit, push, merge, deployment, PR or remote action. Index remains
+empty on feat/admin-workspace-final.
+
+
+## Autonomous concurrent-edit recovery and authentication repair — 2026-11-14
+
+PASS for the approved focused frontend repair. Stage 2B.1 remains uncommitted;
+this does not certify its independent audit or release gates. M-06 remains open
+(legacy arrays, COUNT/deep-offset costs and concurrent-write drift). Stage 2B.2
+and 2B.3 were not started.
+
+Safety investigation: captured SHA-256 and nanosecond modification times for
+api.js, AuthContext.jsx, sessionStore.js and their three test files at four
+snapshots separated by 10 seconds (30 seconds total). All were stable. Sandboxed
+process inspection was denied; an approved read-only process listing succeeded.
+Several long-lived Codex app servers and the code-mode host were present, but no
+active conflicting file writer was evident. Stable hashes are not proof of
+exclusive access. All six source/test hashes and both documentation hashes were
+rechecked before every edit and again after verification. No unexpected changes
+were observed; no processes were terminated. Existing Stage 2B.1 work and all
+unrelated operations notes were preserved.
+
+Reconciliation retained the existing canonical sessionStore implementation,
+opaque WeakMap-backed permits, locked pending-login ownership, token revisions,
+AuthProvider synchronization and Axios request ownership. No second session
+ownership mechanism was added. One incomplete boundary was repaired: refresh
+requests now revalidate the originating permit and token revision under a shared
+Web Lock at actual refresh transport dispatch, after asynchronous interceptors.
+A delayed-refresh regression proves replacement login prevents that transport
+from receiving old refresh credentials. Existing security assertions were not
+weakened. Added unsupported-lock authenticated-dispatch, pending-transport lock
+release and identical-user external replacement/remount coverage.
+
+Final architecture and guarantees:
+- One persisted record, devjobs.auth.v2, contains schema, epoch, revision,
+  credentials and pendingLogin. Legacy devjobs.auth/devjobs.auth.session values
+  are never imported or accepted as canonical ownership. Existing legacy sessions
+  require a new login in the updated client. Old clients do not participate in
+  the new protocol; no control over already-running legacy code is claimed.
+- All cooperating updated documents use the same native Web Locks name.
+  Exclusive locks serialize login ownership writes, credential commits, logout,
+  refresh persistence and expiry; validation occurs inside the lock. localStorage
+  is a record store, not a compare-and-swap or locking primitive.
+- Login/logout rotate epochs, including identical-user re-login. Refresh retains
+  the epoch and increments the credential revision. A pending login keeps current
+  session requests usable. Competing login attempts share canonical ownership;
+  canceled/unmounted/stale attempts cannot commit a replacement session.
+- AuthProvider rereads storage on notifications rather than trusting event data;
+  same-document writes notify subscribers too. Epoch changes remount the private
+  subtree, including same-user replacement and external logout. Same-epoch token
+  rotation retains the mounted identity and private state.
+- Mounted provider ownership binds new requests before Axios interception.
+  Opaque permits survive Axios config cloning. Initiation, request interception,
+  transport dispatch, refresh dispatch/commit, response completion and retry
+  validate session ownership. Shared dispatch locks exclude credential writers
+  until the actual transport is invoked and its bearer token is selected.
+  Locks are released while network responses are pending, so refresh/logout
+  cannot deadlock behind a pending request. Replacement tokens are never attached
+  to an obsolete request. Obsolete completions reject with ERR_CANCELED and
+  sessionExpired=true. Already-dispatched server effects cannot be undone.
+- Without Web Locks, credential writes and authenticated dispatch fail closed;
+  no localStorage spin-lock or insecure fallback is used. Storage denial or
+  malformed canonical records do not import legacy credentials. Public requests
+  remain unauthenticated. This requires supported secure-context browser Web
+  Locks for authenticated operation; no browser-support expansion is claimed.
+
+All seven regression areas pass: membership A -> B -> A, CompanyPage cross-user
+permissions, CompanyJobsList private drafts, CompanyDirectory memberships, Axios
+cross-session replay, AuthProvider stale login completion and cross-tab stale
+editor mutation. The cross-tab editor regression retains real action and actual
+header/payload assertions; its external-tab setup uses a second canonical store
+with independent operation state. A separate legacy split-storage test remains.
+
+Exact final commands from frontend/:
+- npm test -- --run src/features/auth/sessionStore.test.js: PASS, 15 tests / 1 file.
+- npm test -- --run src/features/auth/AuthContext.test.jsx src/features/auth/api.test.js:
+  PASS, 43 tests / 2 files (16 provider, 27 Axios).
+- npm test -- --run src/features/companies/discovery.test.jsx: PASS, 26 tests.
+- npm test -- --run src/features/companies/CompanyPage.test.jsx: PASS, 15 tests.
+- npm test -- --run src/features/jobs/pages/RecruiterPages.test.jsx: PASS, 24 tests.
+- npm test -- --run src/components/templates/RecruiterLayout.test.jsx: PASS, 5 tests.
+- npm run lint: PASS.
+- npm test: PASS, 174 tests / 20 files. Existing non-failing JSDOM
+  getComputedStyle pseudo-element diagnostics remain.
+- npm run build: PASS; existing main-chunk advisory remains (762.00 kB).
+Root git diff --check: PASS; git status --short inspected;
+git diff --cached --stat: empty. Focused/full logs are under
+/tmp/devjobs-recovery-{discovery,company,recruiter,layout,full}.log.
+
+Recovery edited only frontend/src/features/auth/api.js, api.test.js,
+AuthContext.test.jsx, sessionStore.test.js and appended PROJECT_STATUS.md and
+ docs/TESTING_STRATEGY.md. Existing AuthContext.jsx/sessionStore.js implementation
+and other frontend/backend/docs changes were retained. No dependency, public API,
+backend contract, schema, migration or production-settings change was made.
+
+Native multi-document Web Locks/transport behavior is not runtime-certified by
+JSDOM's deterministic scheduler. Independent full review, disposable PostgreSQL,
+standalone/concurrent Chromium, exact staged-export verification and hosted CI
+remain gates. No PostgreSQL, Docker or Chromium command was run during recovery.
+
+Repository identity: branch feat/admin-workspace-final; HEAD
+6f4f6bab00f68aba9d558996d42f2e868255c3a7; committed tree
+2112fb7ec4d5a93e2f5f882eda877d778afaea82; index empty. No staging, commit, push,
+merge, deployment, PR #1 modification or remote action occurred.
+
+
+## Resumed Stage 2B.1 Gate 1 independent audit — 2026-11-14
+
+**FAIL; stopped on a deterministic provider-lifetime vulnerability.** Existing
+implementation and both interrupted E2E files were preserved. Only one regression
+was added to frontend/src/features/auth/AuthContext.test.jsx, and this entry
+appended to PROJECT_STATUS.md and docs/TESTING_STRATEGY.md. No production source,
+API, schema, migration, dependency or settings changes.
+
+Finding: SessionProvider.login captures lifecycle.current when invoked, rather
+than enforcing that its originating provider remains mounted. Cleanup increments
+the counter and cancels the existing attempt, but a retained callback invoked
+after cleanup captures the incremented value, begins a new operation against the
+current canonical epoch and can commit successfully. The regression renders A,
+retains its actual context.login, commits and renders B (confirming the callback
+changed), then invokes the obsolete callback with synthetic A credentials.
+Actual Axios adapter dispatch records POST /auth/login/ with A's login payload;
+the result succeeds, canonical B is replaced by A and the UI renders A. Expected
+behavior is sessionExpired/ERR_CANCELED, no transport and unchanged B. This is
+a provider/API integration regression with a controlled adapter, not a claimed
+native-browser exploit or server authorization bypass. No stale A-payload/B-token
+mutation was observed in this regression. Retained authentication callbacks
+need lifetime ownership even when invoked after unmount; fixing only pending
+operations is insufficient. Implementation intentionally left unchanged under
+the owner's serious-vulnerability stop instruction.
+
+Recovered interrupted-run evidence: /tmp/devjobs-gate1-browser.log is complete,
+not an unknown/in-progress result. Run 4478f58d3de849c799a67e3f2c79b7c4 used owned
+container 397b48e5c6db, cluster 7708000011796447277, PostgreSQL 17 database
+devjobs_e2e_disposable on ephemeral port 55508. Migrations, system check and
+migration consistency PASS; pytest 171 passed / 8 skipped (40.45s).
+Chromium executed two tests: cross-tab PASS (7.7s); role workflow FAIL (33.9s),
+total 42.3s. Failure occurs at admin login, workflows.spec.js:234; retained error
+context reports authentication throttling with 25 seconds remaining. No throttle
+configuration was changed. No fresh browser/container run was started after the
+serious finding; these are recovered results, not rerun certification.
+
+Cross-tab spec review: both pages use one browser context and real shared
+localStorage/native Web Locks. A's capture listener queues canonical storage
+notifications before the application receives them; the test waits for a queued
+event and confirms shared storage already contains B while A's draft remains.
+Real PATCH headers/payloads are checked by a positive A control, no subsequent A
+draft transport, and B's successful own mutation on a shared authorized object.
+Releasing notifications checks remount/private-state invalidation. Refresh keeps
+the epoch/draft. Concurrent refresh routing holds both transports until both
+arrive; one successful request and one cancellation, a single revision increment
+and both documents' recovery are asserted. It does not force a particular
+response to win or independently control late-failure-after-winning-commit
+ordering. Same-user replacement, external logout/re-login and unavailable locks
+are included. Legacy storage rejection is covered by unit integration tests,
+not this browser spec. Browser coverage is therefore not comprehensive.
+
+Review inspected exclusive canonical writes/shared transport dispatch locking,
+opaque permits, provider synchronization, refresh dispatch/commit/retry revision
+checks and recruiter callbacks. Job mutation callbacks use unmount lifetime
+guards; CompanyPage uses authorization guards. The mounted-owner mechanism does
+not make an obsolete AuthProvider login callback safe. Full independent review
+certification stops at the reproduced defect.
+
+Seven existing regression areas in the full frontend run:
+1. Membership A -> B -> A: existing regressions pass.
+2. CompanyPage cross-user permissions/retained callbacks: existing regressions pass.
+3. CompanyJobsList private drafts: existing regressions pass.
+4. CompanyDirectory memberships: existing regressions pass.
+5. Axios cross-session replay/refresh ownership: existing regressions pass.
+6. AuthProvider stale login completion: prior tests pass, new post-remount
+   invocation regression FAILS.
+7. Cross-tab stale editor mutation: existing unit regression passes; recovered
+   native-browser scenario passes with the ordering limits above.
+Passing tests do not override the new lifecycle defect.
+
+Commands run during this resumed audit:
+- frontend/: npm test -- --run src/features/auth/AuthContext.test.jsx:
+  FAIL, 16 passed / 1 failed (17 tests), repeated after diagnostic-only assertion
+  refinement with the same result; final log /tmp/devjobs-gate1-resumed-provider.log.
+- frontend/: npm test > /tmp/devjobs-gate1-resumed-full.log 2>&1:
+  FAIL, 174 passed / 1 failed, 20 files. Only the new regression fails.
+- frontend/: npm run lint: PASS.
+- frontend/: npm run build > /tmp/devjobs-gate1-resumed-build.log 2>&1: PASS;
+  existing chunk-size advisory remains.
+- root: git diff --check: PASS.
+- Read-only process inventory and docker ps -a --filter label=devjobs.e2e:
+  no interrupted runner, pytest, Playwright, owned API/Vite service or labeled
+  container remains. Recovered log reports successful cleanup; private temporary
+  directory devjobs-e2e-8576a4xf is absent. Failure screenshots/context under the
+  run-specific results directory are retained as evidence. No process/container
+  was stopped or removed by this continuation. Development PostgreSQL 17/18 and
+  Vite processes were left alone; development databases and devjobs_test were
+  not accessed.
+
+Branch feat/admin-workspace-final and HEAD
+6f4f6bab00f68aba9d558996d42f2e868255c3a7 unchanged; index empty.
+Working tree retains all 25 modified tracked and 7 untracked paths.
+Stage 2B.1 remains uncommitted. No staging, commit, push, merge, deployment or
+PR #1 change. Resume Gate 1 after lifecycle repair; Gate 2 remains pending,
+including remaining independent acceptance review, clean standalone/concurrent
+isolated Chromium, exact staged-export verification when authorized and hosted
+CI. M-06 remains open; Stage 2B.2 was not started.
+
+
+## Stage 2B.1 resumed final verification — 2026-11-15
+
+**PASS for working-tree Gate 1; recommend Gate 2 staged-snapshot verification.**
+Recovered complete hardening logs and independent Playwright .last-run.json
+artifacts (status passed, failedTests empty) for all three runs. Completed tests
+were not restarted. This continuation changed only this documentation and
+PROJECT_STATUS.md; existing implementation and unrelated operations notes retained.
+
+Authentication review confirms originating layout-effect lifetime objects become
+permanently dead on cleanup, cancel pending login and revoke request permits.
+Retained login/logout callbacks assert their original live owner; Strict Mode
+setup creates a new owner. Generation checks supersede older attempts before
+lock acquisition; actual login dispatch validates again after interceptors.
+Canonical devjobs.auth.v2 epochs, locked pending-login ownership, revision-checked
+refresh dispatch/commit/expiry, opaque initiating request permits and shared
+transport locks prevent obsolete attempts/requests using replacement credentials.
+Missing Web Locks reject credential writes/authenticated dispatch. No material
+security issue found in the reviewed boundaries. All original seven regression
+areas pass: membership A/B/A, CompanyPage permissions, private job drafts,
+directory membership, Axios replay/refresh, provider stale login and cross-tab
+stale editor mutation. Multi-page company lookup now captures one initiating
+ownership; the earlier failing review-regression log predates its repair and the
+passing final auth/full logs.
+
+Recovered commands/results (run on November 14):
+- frontend: npm test — PASS, 184 tests / 20 files
+  (/tmp/devjobs-hardening-full.log).
+- frontend: npm test -- --run src/features/auth/AuthContext.test.jsx
+  src/features/auth/api.test.js src/features/auth/sessionStore.test.js — PASS,
+  68 tests / 3 files (/tmp/devjobs-hardening-auth.log).
+- frontend: npm test -- --run src/features/companies/discovery.test.jsx
+  src/features/companies/CompanyPage.test.jsx
+  src/features/jobs/pages/RecruiterPages.test.jsx
+  src/components/templates/RecruiterLayout.test.jsx — PASS, 70 tests / 4 files
+  (/tmp/devjobs-hardening-integration.log).
+- frontend: npm run build — PASS (/tmp/devjobs-hardening-build.log).
+- backend/.venv/bin/python backend/run_browser.py — PASS, PostgreSQL 17:
+  171 passed / 8 skipped (179 collected, 38.58s), Chromium 3/3 (1.2m).
+  Run 783a2bba7ed645f58209b89362bc45e3; container 959da4c41850;
+  cluster 7708052352626552877; /tmp/devjobs-hardening-browser.log.
+- backend/.venv/bin/python backend/run_browser_concurrent.py — both PASS.
+  Runner 1: 0920bfb6837e49efa1794bf3210d9049, container 46cfed3a08a0,
+  cluster 7708052700176879661. Runner 2:
+  bf191b6394564577a0cf84df8584c520, container 9ffede27e4bf,
+  cluster 7708052700135534637. Each: 171 passed / 8 skipped (179 collected,
+  40.09s); peer service/cluster isolation PASS; Chromium 3/3 (1.2m).
+  /tmp/devjobs-hardening-concurrent.log contains both completion and cleanup lines.
+- Each Chromium execution passes native cross-tab security, Strict Mode provider
+  lifetime/queued transport and candidate/recruiter/admin workflow scenarios.
+  Zero unexpected browser errors. Workflow honors server Retry-After without
+  changing throttle configuration. All runners applied migrations, passed Django
+  system checks and reported no migration changes against their owned databases.
+
+Commands run in this continuation:
+- frontend: npm run lint — PASS.
+- backend/.venv/bin/ruff check backend — PASS.
+- backend/.venv/bin/ruff format --check
+  backend/config/collection_pagination_tests.py backend/config/e2e_safety.py
+  backend/config/test_e2e_safety_unit.py — PASS, 3 files.
+- backend/.venv/bin/ruff format --check --config backend/ruff.toml
+  /tmp/devjobs-2b1-format.py — PASS; extracted changed recruiter view/filter
+  matches current source; historical surrounding formatting retained.
+- /tmp/devjobs-m1-schema-tools/bin/python scripts/validate_openapi.py — PASS:
+  OpenAPI 3.1, 39 paths / 55 operations, six serializer sets, 3 negative controls.
+- Read-only ps inventory and docker ps -a --filter label=devjobs.e2e — PASS:
+  no runner-owned process/container. Private devjobs-e2e/devjobs-concurrent
+  temporary directories absent. Run-specific result directories are retained
+  evidence, not live resources. No existing development service was stopped.
+- git diff --check and git diff --cached --quiet — PASS; index empty.
+  git branch --show-current: feat/admin-workspace-final.
+  git rev-parse HEAD: 6f4f6bab00f68aba9d558996d42f2e868255c3a7.
+  git rev-parse 'HEAD^{tree}': 2112fb7ec4d5a93e2f5f882eda877d778afaea82.
+  git status --short, git diff --name-only and
+  git ls-files --others --exclude-standard inspected.
+
+Limits: 8 optional Redis tests skipped per PostgreSQL run; these are not claimed
+passed. Chromium only; secure-context native Web Locks required. Native refresh
+coverage does not force every late-response ordering; deterministic regressions
+cover additional orderings. Already-dispatched server effects cannot be undone.
+Existing JSDOM/Ant Design diagnostics and 762.49 kB bundle advisory remain.
+Full tests/build and browser results are recovered, not rerun today; source
+mtime inspection found no later frontend production/unit changes. Later browser
+fixture and safety changes are covered by the completed concurrent run.
+Gate 2 exact snapshot and hosted CI remain pending; M-06 limitations remain.
+No dependency, production-settings, API or schema change in this continuation.
+No staging, commit, push, merge, deployment or PR #1 modification. Stage 2B.2
+not started.
+
+Modified tracked paths (27):
+```text
+PROJECT_STATUS.md
+backend/apps/recruiters/api.py
+backend/config/collection_pagination_tests.py
+backend/config/e2e_safety.py
+backend/config/test_e2e_safety_unit.py
+docs/API_CONVENTIONS.md
+docs/LOCAL_DEVELOPMENT.md
+docs/TESTING_STRATEGY.md
+docs/openapi.yaml
+frontend/e2e/workflows.spec.js
+frontend/src/components/templates/RecruiterLayout.jsx
+frontend/src/components/templates/RecruiterLayout.test.jsx
+frontend/src/features/auth/AuthContext.jsx
+frontend/src/features/auth/AuthPages.test.jsx
+frontend/src/features/auth/api.js
+frontend/src/features/auth/api.test.js
+frontend/src/features/companies/CompanyPage.jsx
+frontend/src/features/companies/CompanyPage.test.jsx
+frontend/src/features/jobs/pages/CompanyDirectory.jsx
+frontend/src/features/jobs/pages/JobsPages.test.jsx
+frontend/src/features/jobs/pages/RecruiterPages.jsx
+frontend/src/features/jobs/pages/RecruiterPages.test.jsx
+frontend/src/features/jobs/services/api.js
+frontend/src/features/jobs/services/api.test.js
+frontend/src/features/resumes/ResumePage.test.jsx
+frontend/src/features/resumes/api.test.js
+frontend/src/test/setup.js
+```
+
+Untracked individual files (9):
+```text
+frontend/e2e/auth-cross-tab.spec.js
+frontend/e2e/fixtures/provider-lifetime.jsx
+frontend/e2e/provider-lifetime.spec.js
+frontend/src/features/auth/AuthContext.test.jsx
+frontend/src/features/auth/sessionStore.js
+frontend/src/features/auth/sessionStore.test.js
+frontend/src/features/companies/CompanyPicker.jsx
+frontend/src/features/companies/discovery.test.jsx
+frontend/src/features/companies/useCompanyMembership.js
+```
+
+
+## Stage 2B.1 Gate 2 exact snapshot procedure — 2026-11-15
+
+Gate 2 audits the authorized company discovery implementation, authentication
+repairs, regression/browser tests and API/testing documentation. The baseline is
+feat/admin-workspace-final at 6f4f6bab00f68aba9d558996d42f2e868255c3a7,
+tree 2112fb7ec4d5a93e2f5f882eda877d778afaea82, initially empty index.
+The four unrelated local operations sections in PROJECT_STATUS.md and all
+uncommitted LOCAL_DEVELOPMENT.md operations notes are excluded through index-only
+staging; their working-tree bytes are preserved. No schema, migration, dependency
+or production-settings changes are included.
+
+Verification uses git archive of git write-tree, locked npm ci dependencies,
+frontend lint/unit/build, backend Ruff/changed-code format, OpenAPI validation,
+pure runner safety tests and standalone plus concurrent disposable PostgreSQL 17
+and Chromium runners. All project code comes from the export. Existing backend
+installed packages may be reused. Tree hashes, actual results and local commit
+identity are recorded in the delivery report outside the tested tree to avoid
+changing the snapshot after verification. Commit is conditional on every required
+check passing and the index still matching the tested tree. No push, merge,
+deployment or PR operation is authorized.
+
+Security review covers originating provider lifetimes and retained callbacks,
+canonical ownership, serialized credential writes, missing-lock rejection, stale
+login/refresh cancellation, request initiation/dispatch/retry, membership A/B/A,
+private drafts, stale editors and legacy storage rejection. Native browser refresh
+coverage explicitly selects each document as winner with late success and late
+failure; deterministic unit regressions cover both commit orders. These are
+bounded regression guarantees, not exhaustive concurrency certification.
+Secure-context Web Locks and Chromium remain required verification boundaries;
+eight optional Redis tests may skip. Already-dispatched server effects cannot
+be undone. M-06 remains open; Stage 2B.2 is not started.
+
+
+## Stage 2B.1 Gate 2 exact snapshot result — 2026-11-15
+
+**FAIL; no commit created.** Tested staged tree
+59232ebfabfb0ca2dd6b257250bc5779bc7817d2 was exported with git archive.
+35 authorized paths staged; LOCAL_DEVELOPMENT.md excluded entirely and four
+PROJECT_STATUS local operations sections excluded in two diff hunks. Original
+work preserved. This result is an unstaged append after testing; it is not part
+of the tested tree and must be included in any rebuilt snapshot before a future
+commit. Branch/HEAD remain the expected feat/admin-workspace-final /
+6f4f6bab00f68aba9d558996d42f2e868255c3a7.
+
+Fresh exported-source verification: npm ci, lint, 184 frontend tests / 20 files,
+build, Ruff, three changed Python files plus extracted recruiter view/filter
+format, OpenAPI 39 paths / 55 operations / three negative controls and 16 runner
+safety tests PASS. Initial pure safety invocation was denied loopback sockets by
+the sandbox; approved rerun passed. Initial OpenAPI invocation lacked exported
+backend/.venv; linking the permitted installed dependency environment corrected
+the harness setup without changing any exported source.
+
+Standalone owned PostgreSQL 17: 171 passed / 8 optional Redis skipped; Django
+check and migration consistency PASS; Chromium 3/3 PASS. Concurrent runners each
+passed PostgreSQL 171/8, Django/migrations and peer service/cluster/credential
+isolation. Runner c645570f0f494f519d62e92afae7a043 Chromium 3/3 PASS. Runner
+b7d4116b9caa4dac8225767281a43249 Chromium 2 passed / 1 failed: native cross-tab
+and retained-provider lifetime regressions PASS, role workflow FAIL at admin
+login (workflows.spec.js:248). waitForResponse and form-button click at lines
+44/45 timed out after 10000ms. Admin failure screenshot shows the preceding
+429 with 25 seconds remaining. Helper honors Retry-After; evidence does not
+explain why the subsequent form-button lookup/response failed. A specific
+product defect or complete root cause is not established. No test or throttle
+policy was weakened, and no retry was used to erase the failure.
+
+Evidence: /tmp/devjobs-gate2-{frontend-tests,build,browser,concurrent}.log,
+/tmp/devjobs-gate2-reviewed-staged.diff, export manifest and archive, and
+/tmp/devjobs-e2e-b7d4116b9caa4dac8225767281a43249-results/. All three owned
+containers cleaned; Docker inventory retains only the original stopped welcome
+container. Final resource/hash verification is recorded in the delivery report.
+No development database, schema, dependencies or production settings were
+changed. Index remains staged for review; no commit/push/merge/deployment/PR
+operation occurred. M-06 remains open; Stage 2B.2 not started.
+
+
+## Stage 2B.1 Gate 2 login blocker repair — 2026-11-15
+
+The starting index was verified as tree
+59232ebfabfb0ca2dd6b257250bc5779bc7817d2, 35 authorized paths on
+feat/admin-workspace-final at 6f4f6bab00f68aba9d558996d42f2e868255c3a7.
+The earlier failed Gate 2 result above is retained and included in the rebuilt
+snapshot. Four unrelated PROJECT_STATUS operations sections and all local
+LOCAL_DEVELOPMENT notes remain excluded through index-only staging.
+
+The quota response is expected policy: the cross-tab scenario makes two logins,
+then the role workflow makes four. All are anonymous requests from 127.0.0.1;
+separate browser contexts/accounts do not create separate client-IP quotas.
+The sixth request within 60 seconds exceeds 5/minute. Each runner has a separate
+backend process and process-local cache, independent UUID accounts, database,
+ports and browser contexts. Production Redis is not used by these E2E settings;
+there is no demonstrated cross-run cache or credential leak.
+
+A controlled Chromium regression holds the real Ant Design loading-icon leave
+transition across a 429. The button's native accessible name is then
+"loading Log in", although its visible text is "Log in". The old exact-name
+selector fails after the quota wait and its unobserved response promise also
+times out. The control run reproduces this failure (11.8s), and the old helper's
+role workflow fails again at admin login. An initial diagnostic run passed,
+confirming the renderer timing is intermittent. The historical failed run had
+no accessibility trace: its exact renderer schedule cannot be reconstructed.
+This is a demonstrated helper defect, not a proven production login defect.
+Control evidence: /tmp/devjobs-login-red.log and preserved old helper
+/tmp/devjobs-login-red-helper.js; diagnostic: /tmp/devjobs-login-investigate.log.
+
+The shared E2E helper now selects the form's submit button independently of its
+decorative icon and waits for visibility, enabled state and React's non-loading
+class. Click and matching POST response are observed together with Promise.all.
+Only one bounded retry is allowed, using precisely the server's Retry-After;
+there is no arbitrary padding or enlarged action/scenario timeout. It checks
+that the original URL, document and anonymous session record survive the wait,
+and verifies the final account identity as well as the workspace menu.
+No production/frontend application source, throttle policy, runner architecture,
+API, schema, migration or dependency change is required by this repair.
+
+Regression coverage adds native 429/held-icon retry with a real admin login,
+retry cancellation on navigation, anonymous session replacement and context
+closure, plus a component test for anonymous credentials, retained form values,
+idle submit state and no automatic resubmission after admin 429. Existing
+cross-tab, provider-lifetime, company-discovery and role assertions remain.
+Focused AuthPages command: npm test -- --run
+src/features/auth/AuthPages.test.jsx — PASS, 8 tests. Frontend ESLint PASS.
+An initial npm run lint from repository root failed ENOENT; the correct frontend
+working directory passed. Browser and exact-snapshot acceptance results are
+recorded in the delivery report, outside the tested tree, to keep its identity
+stable. No check is accepted merely because the earlier snapshot passed.
+
+The rebuilt staged tree must be exported using git archive and verified with
+fresh npm ci, full frontend tests/lint/build, backend Ruff/changed-code format,
+OpenAPI, 16 pure runner safety tests, standalone owned PostgreSQL 17/Chromium,
+and three complete fresh concurrent pairs with peer rejection. Commit is
+conditional on every required check passing and an unchanged tested index.
+Only the requested local commit is authorized; no push, merge, deployment or PR
+operation. Chromium/native Web Locks remain the boundary; optional Redis tests
+may skip, hosted CI is pending, and repeated passes are bounded evidence rather
+than a proof of race freedom. M-06 remains open. Stage 2B.2 is not started.

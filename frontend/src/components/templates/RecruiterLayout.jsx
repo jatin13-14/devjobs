@@ -3,16 +3,25 @@ import { Link, NavLink, Outlet, useNavigate, useSearchParams } from 'react-route
 import { Avatar, Button, ConfigProvider, Dropdown, Input, theme } from 'antd';
 import { HomeOutlined, TeamOutlined, BankOutlined, UserOutlined, ShopOutlined, SunOutlined, MoonOutlined, DownOutlined, BarChartOutlined } from '@ant-design/icons';
 import { useAuth } from '../../features/auth/useAuth.js';
+import { useCompanyMembership } from '../../features/companies/useCompanyMembership.js';
 import { jobsApi } from '../../features/jobs/services/api.js';
 import '../../styles/recruiter.css';
 
 const links = [['/recruiter', 'Dashboard', HomeOutlined], ['/recruiter/jobs', 'Jobs', ShopOutlined], ['/recruiter/applicants', 'Applicants', TeamOutlined], ['/recruiter/companies', 'Company', BankOutlined], ['/recruiter/profile', 'Profile', UserOutlined]];
 export function RecruiterLayout() {
+  const { user } = useAuth();
+  // Remount only authenticated recruiter state; ordinary rerenders keep it intact.
+  return user?.id ? <RecruiterWorkspace key={user.id} /> : null;
+}
+
+function RecruiterWorkspace() {
   const { user, logout } = useAuth(); const navigate = useNavigate(); const [params] = useSearchParams();
   const [mode, setMode] = useState(() => { try { return localStorage.getItem('devjobs.recruiter.theme') === 'dark' ? 'dark' : 'light'; } catch { return 'light'; } });
   const [name, setName] = useState('');
-  const [company, setCompany] = useState(null);
-  useEffect(() => { let live = true; jobsApi.recruiterProfile().then((p) => { if (live) setName(p.name || ''); }).catch(() => {}); jobsApi.recruiterCompanies().then((items) => { if (live) setCompany(items.length === 1 ? items[0] : null); }).catch(() => {}); return () => { live = false; }; }, [user?.id]);
+  const [sole, setSole] = useState(null);
+  const { membership } = useCompanyMembership(params.get('company'));
+  const company = params.get('company') ? membership : sole?.userId === user?.id ? sole.company : null;
+  useEffect(() => { let live = true; jobsApi.recruiterProfile().then((p) => { if (live) setName(p.name || ''); }).catch(() => {}); jobsApi.recruiterCompanies().then((items) => { if (live) setSole({ userId: user?.id, company: items.count === 1 ? items.results[0] : null }); }).catch(() => {}); return () => { live = false; }; }, [user?.id]);
   function toggle() { const next = mode === 'light' ? 'dark' : 'light'; setMode(next); try { localStorage.setItem('devjobs.recruiter.theme', next); } catch { /* Keep the in-memory preference. */ } }
   const nav = (bottom = false) => (bottom ? links : [...links.slice(0, 4), ['/recruiter/companies', 'Team', TeamOutlined], ['/recruiter#applications-overview', 'Analytics', BarChartOutlined]]).map(([to, label, Icon]) => <NavLink key={label} to={to} end={to === '/recruiter'} className={({ isActive }) => `recruiter-nav-link${isActive && label !== 'Team' && label !== 'Analytics' ? ' active' : ''}`}>{createElement(Icon, { 'aria-hidden': true })}<span>{label}</span></NavLink>);
   const brand = <span className="recruiter-brand"><span aria-hidden="true">〈/〉</span> DevJobs</span>;

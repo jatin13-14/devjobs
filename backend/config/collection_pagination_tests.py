@@ -228,3 +228,75 @@ class CollectionPaginationTests(APITestCase):
         for url, measured in counts.items():
             self.assertEqual(measured, [measured[0]] * 3)
             print(f"Pagination dataset counts {url}: records 100/20/1 = {measured}")
+
+    def test_recruiter_company_filters_and_legacy_compatibility(self):
+        self.client.force_authenticate(self.recruiter)
+        url = "/api/v1/recruiters/me/companies/"
+        company_id = str(self.company.pk)
+        for search in ("PAGINATION", "  pagination  "):
+            response = self.client.get(url, {"pagination": "page", "search": search})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.data["count"], 1)
+            self.assertEqual(response.data["results"][0]["id"], company_id)
+        for filters in (
+            {"company_id": company_id},
+            {"company_id": company_id, "search": "pagination"},
+        ):
+            response = self.client.get(url, {"pagination": "page", **filters})
+            self.assertEqual(response.data["count"], 1)
+            self.assertEqual(response.data["results"][0]["id"], company_id)
+        for filters in (
+            {"company_id": "invalid"},
+            {"company_id": ""},
+            {"search": "x" * 201},
+            {"search": "bad\x00value"},
+        ):
+            self.assertEqual(
+                self.client.get(url, {"pagination": "page", **filters}).status_code, 400
+            )
+            self.assertEqual(len(self.client.get(url, filters).data), 105)
+        for filters in (
+            {"company_id": "00000000-0000-4000-8000-000000000001"},
+            {"search": "no match"},
+            {"company_id": company_id, "search": "no match"},
+        ):
+            self.assertEqual(
+                self.client.get(url, {"pagination": "page", **filters}).data["count"], 0
+            )
+        response = self.client.get(
+            url + "?pagination=page&search=absent&search=Synthetic&page_size=1"
+        )
+        self.assertEqual(response.data["count"], 105)
+        query = parse_qs(urlparse(response.data["next"]).query)
+        self.assertEqual(query["search"][-1], "Synthetic")
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get(
+                url, {"pagination": "page", "search": "Synthetic", "page_size": 1, "page": 2}
+            )
+        self.assertTrue(any("LIMIT 1 OFFSET 1" in item["sql"] for item in queries))
+        self.assertTrue(any("COUNT(" in item["sql"] for item in queries))
+        self.assertEqual(response.data["count"], 105)
+
+    def test_recruiter_exact_lookup_preserves_eligibility_and_privacy(self):
+        url = "/api/v1/recruiters/me/companies/"
+        self.client.force_authenticate(self.recruiter)
+        filters = {"pagination": "page", "company_id": str(self.company.pk)}
+        membership = CompanyMembership.objects.get(
+            company=self.company, recruiter=self.recruiter_profile
+        )
+        for status in ("INVITED", "SUSPENDED"):
+            # Owner invariant requires an active owner; change this test row to MEMBER first.
+            other = User.objects.create_user(
+                f"filter-{status.lower()}@example.test", role=User.Role.RECRUITER
+            )
+            profile = RecruiterProfile.objects.create(user=other, name="Synthetic filter member")
+            CompanyMembership.objects.create(
+                company=self.company, recruiter=profile, role="MEMBER", status=status
+            )
+            self.client.force_authenticate(other)
+            self.assertEqual(self.client.get(url, filters).data["count"], 0)
+        self.client.force_authenticate(self.recruiter)
+        self.company.is_suspended = True
+        self.company.save(update_fields=["is_suspended"])
+        self.assertEqual(self.client.get(url, filters).data["count"], 0)
+        self.assertEqual(membership.status, "ACTIVE")

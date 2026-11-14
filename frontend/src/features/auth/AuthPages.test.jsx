@@ -1,3 +1,4 @@
+import { writeAuth, readAuth } from './api.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -18,7 +19,7 @@ function renderAuth(page, route = '/login') {
 }
 const fill = async (user, field, value) => user.type(screen.getByLabelText(field), value);
 function LogoutControl() { const { logout, user } = useAuth(); return <button onClick={logout}>{user ? 'Log out' : 'Signed out'}</button>; }
-beforeEach(() => { vi.clearAllMocks(); window.localStorage.clear(); });
+beforeEach(async () => { vi.clearAllMocks(); window.localStorage.clear(); });
 afterEach(cleanup);
 
 describe('authentication screens', () => {
@@ -44,7 +45,21 @@ describe('authentication screens', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/credentials/i);
     authApi.login.mockResolvedValueOnce({ access: 'access-token', refresh: 'refresh-token', user: { id: '1', email: 'c@example.com', role: 'candidate' } });
     await user.clear(screen.getByLabelText('Email address')); await fill(user, 'Email address', 'c@example.com'); await user.clear(screen.getByLabelText('Password')); await fill(user, 'Password', 'Good-pass-42!'); await user.click(screen.getByRole('button', { name: 'Log in' }));
-    await waitFor(() => expect(window.localStorage.getItem('devjobs.auth')).toContain('access-token'));
+    await waitFor(() => expect(readAuth()?.access).toBe('access-token'));
+  });
+  it('keeps an admin login anonymous and usable after a quota response', async () => {
+    const user = userEvent.setup();
+    authApi.login.mockRejectedValueOnce({ response: { status: 429, data: { detail: 'Request was throttled. Expected available in 1 second.' } } });
+    renderAuth(<LoginPage admin />);
+    await fill(user, 'Email address', 'admin@example.test'); await fill(user, 'Password', 'Strong-pass-42!');
+    await user.click(screen.getByRole('button', { name: 'Log in' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Request was throttled.');
+    expect(readAuth()).toBeNull();
+    expect(screen.getByLabelText('Email address')).toHaveValue('admin@example.test');
+    expect(screen.getByLabelText('Password')).toHaveValue('Strong-pass-42!');
+    await waitFor(() => expect(document.querySelector('form button[type=submit]')).not.toHaveClass('ant-btn-loading'));
+    expect(document.querySelector('form button[type=submit]')).toBeEnabled();
+    expect(authApi.login).toHaveBeenCalledTimes(1);
   });
   it('validates email and password confirmation in the browser', async () => {
     const user = userEvent.setup(); renderAuth(<CandidateRegistrationPage />, '/register/candidate');
@@ -57,18 +72,18 @@ describe('authentication screens', () => {
   it('guards both role routes in both directions and sends anonymous users to login', async () => {
     const { unmount } = renderAuth(<LoginPage />, '/candidate');
     expect(await screen.findByRole('heading', { name: 'Welcome back' })).toBeInTheDocument(); unmount();
-    window.localStorage.setItem('devjobs.auth', JSON.stringify({ access: 'a', refresh: 'r', user: { role: 'recruiter' } }));
+    await writeAuth({ access: 'a', refresh: 'r', user: { id: 'synthetic-user', role: 'recruiter' } });
     renderAuth(<LoginPage />, '/candidate');
     expect(await screen.findByText('Recruiter area')).toBeInTheDocument();
     cleanup();
-    window.localStorage.setItem('devjobs.auth', JSON.stringify({ access: 'a', refresh: 'r', user: { role: 'candidate' } }));
+    await writeAuth({ access: 'a', refresh: 'r', user: { id: 'synthetic-user', role: 'candidate' } });
     renderAuth(<LoginPage />, '/recruiter');
     expect(await screen.findByText('Candidate area')).toBeInTheDocument();
     cleanup();
     renderAuth(<LoginPage />, '/candidate');
     expect(await screen.findByText('Candidate area')).toBeInTheDocument();
     cleanup();
-    window.localStorage.setItem('devjobs.auth', JSON.stringify({ access: 'a', refresh: 'r', user: { role: 'recruiter' } }));
+    await writeAuth({ access: 'a', refresh: 'r', user: { id: 'synthetic-user', role: 'recruiter' } });
     renderAuth(<LoginPage />, '/recruiter');
     expect(await screen.findByText('Recruiter area')).toBeInTheDocument();
   });
@@ -81,11 +96,11 @@ describe('authentication screens', () => {
     expect(await screen.findByText('Candidate area')).toBeInTheDocument();
   });
   it('clears stored credentials on logout', async () => {
-    window.localStorage.setItem('devjobs.auth', JSON.stringify({ access: 'a', refresh: 'r', user: { role: 'candidate' } }));
+    await writeAuth({ access: 'a', refresh: 'r', user: { id: 'synthetic-user', role: 'candidate' } });
     const user = userEvent.setup();
     render(<ConfigProvider><AuthProvider><LogoutControl /></AuthProvider></ConfigProvider>);
     await user.click(screen.getByRole('button', { name: 'Log out' }));
     expect(screen.getByRole('button', { name: 'Signed out' })).toBeInTheDocument();
-    expect(window.localStorage.getItem('devjobs.auth')).toBeNull();
+    expect(readAuth()).toBeNull();
   });
 });

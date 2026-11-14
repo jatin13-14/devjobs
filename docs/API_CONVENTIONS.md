@@ -314,3 +314,30 @@ Repeated query parameters follow Django/DRF last-value semantics, including the
 pagination mode: `pagination=invalid&pagination=page` opts in, while the reverse
 returns 400. This is consistent parsing, not an authorization bypass; permissions
 and queryset scope are established before the helper reads the mode.
+
+## Stage 2B.1: recruiter company discovery
+
+Only paginated recruiter me/companies GET accepts `search` and `company_id`.
+Search is trimmed case-insensitive company-name substring matching, with a
+200-character maximum after trimming; blank search means no name filter.
+NUL/surrogate text and malformed/blank UUIDs return field-level 400 errors.
+Repeated parameters use the last value. Both filters intersect within the caller's
+ACTIVE memberships in non-suspended companies before COUNT and LIMIT/OFFSET.
+A valid inaccessible/nonexistent UUID returns the same zero-count envelope;
+no global company existence lookup occurs. Ordering remains company name/ID.
+Legacy requests ignore both filters, even malformed ones, and retain plain arrays.
+Default/max page sizes remain 20/100 and existing DRF page semantics apply.
+
+Recruiter directory, picker, dashboard, sidebar and membership-dependent screens
+now request the envelope explicitly. Directory search uses `company_search` and
+`company_page` route parameters, preserving job `search` context. Picker pages load
+on demand; selected options survive search. Exact company-ID requests resolve
+permissions independently of discovery page position. Loading/errors never grant
+management permissions; errors offer retry. Selection changes invalidate previous
+membership synchronously and cancel/ignore older discovery responses. Job editor,
+detail and applicant views remount on route identity changes. Company membership
+mutations reload exact membership before enabling controls. Backend permissions
+remain authoritative. Requests use configured API paths and numeric page values,
+never server-provided absolute navigation URLs. Company membership list and
+candidate skill UIs retain legacy behavior. M-06 remains open; Stage 2B.2/2B.3 and
+legacy retirement are outside this change. Dashboard job aggregation is unchanged.

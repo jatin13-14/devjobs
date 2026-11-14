@@ -19,3 +19,14 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent() { return false; },
   }),
 });
+
+// Serialized same-origin Web Locks stand-in for JSDOM. Browser coverage must use
+// native navigator.locks; all independent stores in a test share this queue.
+let sessionLock = Promise.resolve();
+Object.defineProperty(window.navigator, 'locks', { configurable: true, value: {
+  request: (_name, _options, callback) => {
+    const result = sessionLock.then(callback);
+    sessionLock = result.catch(() => {});
+    return result;
+  },
+} });

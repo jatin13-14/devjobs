@@ -1,4 +1,4 @@
-import { http } from '../../auth/api.js';
+import { captureRequestOwnership, http } from '../../auth/api.js';
 
 export const jobsApi = {
   list: (params) => http.get('/jobs/', { params }).then(({ data }) => data),
@@ -8,13 +8,14 @@ export const jobsApi = {
   application: (id) => http.get(`/candidates/me/applications/${id}/`).then(({ data }) => data),
   withdraw: (id) => http.patch(`/candidates/me/applications/${id}/`, {}).then(({ data }) => data),
   recruiterProfile: () => http.get('/recruiters/me/profile/').then(({ data }) => data),
-  recruiterCompanies: () => http.get('/recruiters/me/companies/').then(({ data }) => data),
+  recruiterCompanies: ({ page = 1, pageSize = 20, search, companyId, signal } = {}) => http.get('/recruiters/me/companies/', { params: { pagination: 'page', page, page_size: pageSize, search, company_id: companyId }, signal }).then(({ data }) => data),
   company: (id) => http.get(`/companies/${id}/`).then(({ data }) => data),
-  companyJobs: (id, params) => http.get(`/companies/${id}/jobs/`, { params }).then(({ data }) => data),
+  companyJobs: (id, params, ownership) => http.get(`/companies/${id}/jobs/`, { ...ownership, params }).then(({ data }) => data),
   companyJob: async (companyId, jobId) => {
+    const ownership = captureRequestOwnership();
     let page = 1;
     while (true) {
-      const data = await jobsApi.companyJobs(companyId, { page });
+      const data = await jobsApi.companyJobs(companyId, { page }, ownership);
       const job = (data.results || []).find((item) => item.id === jobId);
       if (job) return job;
       if (!data.next) throw new Error('This job is not part of the selected company.');

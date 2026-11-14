@@ -1,4 +1,5 @@
 """Fail-closed validation shared by the disposable runner and Django settings."""
+
 from urllib.parse import urlsplit
 
 from django.core.exceptions import ImproperlyConfigured
@@ -34,6 +35,8 @@ def verify_connection(connection, env):
         )
         database, port, version, identifier = cursor.fetchone()
     if (database, port, identifier) != (
-        "devjobs_e2e_disposable", 5432, env["E2E_SYSTEM_IDENTIFIER"]
+        "devjobs_e2e_disposable",
+        5432,
+        env["E2E_SYSTEM_IDENTIFIER"],
     ) or not 170000 <= version < 180000:
         raise ImproperlyConfigured("Disposable PostgreSQL identity mismatch; refusing writes")

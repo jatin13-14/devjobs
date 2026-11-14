@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { AuthContext } from '../auth/authContext.js';
 import { ResumePage } from './ResumePage.jsx';
 import { RecruiterApplicantDetailPage } from '../jobs/pages/RecruiterPages.jsx';
 import { resumeApi } from './api.js';
 import { jobsApi } from '../jobs/services/api.js';
 
 vi.mock('./api.js', () => ({ resumeApi: { metadata: vi.fn(), upload: vi.fn(), remove: vi.fn(), download: vi.fn(), applicantDownload: vi.fn() }, resumeError: () => 'Resume action failed.' }));
-vi.mock('../jobs/services/api.js', () => ({ jobsApi: { recruiterApplication: vi.fn() }, apiMessage: () => 'Request failed.' }));
+vi.mock('../jobs/services/api.js', () => ({ jobsApi: { recruiterApplication: vi.fn(), recruiterCompanies: vi.fn() }, apiMessage: () => 'Request failed.' }));
 beforeEach(() => vi.clearAllMocks());
 afterEach(cleanup);
 const metadata = { filename: 'resume.pdf', size: 400, updated_at: '2026-11-07T00:00:00Z' };
@@ -52,8 +53,9 @@ it('shows metadata load failures', async () => {
 });
 
 function applicant(available) {
+  jobsApi.recruiterCompanies.mockResolvedValue({ results: [{ id: 'company-1', role: 'OWNER' }] });
   jobsApi.recruiterApplication.mockResolvedValue({ candidate: { full_name: 'Synthetic Candidate', skills: [] }, status: 'SUBMITTED', resume_available: available });
-  render(<MemoryRouter initialEntries={['/jobs/job-1/applicants/app-1']}><Routes><Route path="/jobs/:id/applicants/:applicationId" element={<RecruiterApplicantDetailPage />} /></Routes></MemoryRouter>);
+  render(<AuthContext.Provider value={{ user: { id: 'recruiter' } }}><MemoryRouter initialEntries={['/jobs/job-1/applicants/app-1?company=company-1']}><Routes><Route path="/jobs/:id/applicants/:applicationId" element={<RecruiterApplicantDetailPage />} /></Routes></MemoryRouter></AuthContext.Provider>);
 }
 
 it('downloads through the application scope and displays revoked access errors', async () => {

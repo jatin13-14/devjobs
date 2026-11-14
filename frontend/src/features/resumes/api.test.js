@@ -1,9 +1,10 @@
+import { writeAuth } from '../auth/api.js';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { http } from '../auth/api.js';
 import { resumeApi } from './api.js';
 
 const adapter = http.defaults.adapter;
-beforeEach(() => { window.localStorage.clear(); });
+beforeEach(async () => { window.localStorage.clear(); });
 afterEach(() => { http.defaults.adapter = adapter; vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 it('sends multipart bytes despite the shared JSON client default', async () => {
@@ -24,7 +25,7 @@ it('downloads authenticated blobs through the application scope and releases the
   const blob = new Blob(['synthetic'], { type: 'application/pdf' });
   const transport = vi.fn(async (config) => ({ data: blob, status: 200, headers: {}, config }));
   http.defaults.adapter = transport;
-  window.localStorage.setItem('devjobs.auth', JSON.stringify({ access: 'synthetic-access', user: { id: 'synthetic' } }));
+  await writeAuth({ access: 'synthetic-access', user: { id: 'synthetic' } });
   const createObjectURL = vi.fn(() => 'blob:synthetic'); const revokeObjectURL = vi.fn();
   vi.stubGlobal('URL', Object.assign(class extends URL {}, { createObjectURL, revokeObjectURL }));
   const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
