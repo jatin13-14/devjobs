@@ -164,6 +164,28 @@ test('candidate, recruiter and administrator workflow with private access enforc
   await memberPage.goto(`/recruiter/companies/${companyId}`);
   await expect(memberPage.getByLabel('name', { exact: true })).toBeDisabled();
   await expect(memberPage.getByRole('button', { name: 'Add membership' })).toHaveCount(0);
+  // Real OWNER transfer uses the existing PATCH contract, then revalidates both accounts.
+  await recruiter.getByRole('button', { name: 'Transfer ownership to Synthetic member', exact: true }).click();
+  await recruiter.getByRole('button', { name: 'Transfer ownership', exact: true }).click();
+  await expect(recruiter.getByText('Active membership · ADMIN')).toBeVisible();
+  await expect(recruiter.getByRole('button', { name: 'Transfer ownership to Synthetic member', exact: true })).toHaveCount(0);
+  await memberPage.reload();
+  await expect(memberPage.getByText('Active membership · OWNER')).toBeVisible();
+  await memberPage.setViewportSize({ width: 390, height: 960 });
+  await expect.poll(() => memberPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await memberPage.getByRole('button', { name: `Transfer ownership to Synthetic recruiter ${run}`, exact: true }).focus();
+  await expect(memberPage.getByRole('button', { name: `Transfer ownership to Synthetic recruiter ${run}`, exact: true })).toBeFocused();
+  await memberPage.setViewportSize({ width: 1440, height: 960 });
+  await memberPage.getByRole('button', { name: `Transfer ownership to Synthetic recruiter ${run}`, exact: true }).click();
+  await memberPage.getByRole('button', { name: 'Transfer ownership', exact: true }).click();
+  await expect(memberPage.getByText('Active membership · ADMIN')).toBeVisible();
+  await recruiter.reload();
+  await expect(recruiter.getByText('Active membership · OWNER')).toBeVisible();
+  await recruiter.getByRole('combobox', { name: 'Role for Synthetic member' }).click();
+  await recruiter.locator('.ant-select-dropdown:visible .ant-select-item-option-content').filter({ hasText: /^MEMBER$/ }).click();
+  await expect(recruiter.getByText('Synthetic member · MEMBER · ACTIVE')).toBeVisible();
+  await memberPage.reload();
+  await expect(memberPage.getByRole('button', { name: 'Add membership' })).toHaveCount(0);
   await recruiter.goto(`/recruiter/jobs/new?company=${companyId}`);
   await recruiter.getByLabel('Job title').fill(`Synthetic Engineer ${run}`);
   await recruiter.getByLabel('Description', { exact: true }).fill('Synthetic browser test role');
@@ -208,6 +230,15 @@ test('candidate, recruiter and administrator workflow with private access enforc
     data: { status: 'REVIEWING' }, headers: { Authorization: `Bearer ${memberAuth.access}` },
   });
   expect(statusDenied.status()).toBe(403);
+  await recruiter.goto(`/recruiter/companies/${companyId}`);
+  await recruiter.getByRole('combobox', { name: 'Status for Synthetic member' }).click();
+  await recruiter.getByText('SUSPENDED', { exact: true }).last().click();
+  await expect(recruiter.getByText('Synthetic member · MEMBER · SUSPENDED')).toBeVisible();
+  await recruiter.getByRole('button', { name: 'Remove membership', exact: true }).click();
+  await recruiter.getByRole('button', { name: 'OK', exact: true }).click();
+  await expect(recruiter.getByText('Synthetic member · MEMBER · SUSPENDED')).toHaveCount(0);
+  await memberPage.reload();
+  await expect(memberPage.getByRole('button', { name: 'Add membership' })).toHaveCount(0);
   await memberContext.close();
   await recruiter.goto(`/recruiter/jobs/${job.id}/applicants/${application.id}?company=${companyId}`);
   const download = recruiter.waitForEvent('download');

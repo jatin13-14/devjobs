@@ -30,6 +30,99 @@ class CompanyApiTests(APITestCase):
             role=CompanyMembership.Role.MEMBER, status=CompanyMembership.Status.ACTIVE,
         )
 
+    def test_admin_cannot_take_company_ownership_from_active_owner(self):
+        """Ownership transfer must require the current owner, including self-promotion."""
+        self.client.force_authenticate(self.admin_user)
+        response = self.client.patch(
+            f"/api/v1/companies/{self.company.pk}/members/{self.admin.pk}/",
+            {"role": "OWNER"},
+            format="json",
+        )
+        self.owner_membership.refresh_from_db()
+        self.admin.refresh_from_db()
+        self.assertEqual(
+            (response.status_code, self.owner_membership.role, self.admin.role),
+            (403, CompanyMembership.Role.OWNER, CompanyMembership.Role.ADMIN),
+        )
+
+    def test_unauthorized_transfer_matrix_preserves_all_memberships(self):
+        outsider = self.make_user("outsider")
+        candidate = self.make_user("candidate", User.Role.CANDIDATE)
+        before = list(CompanyMembership.objects.order_by("pk").values())
+        for user, expected in (
+            (self.admin_user, 403),
+            (self.member_user, 403),
+            (outsider, 403),
+            (candidate, 403),
+            (None, 401),
+        ):
+            with self.subTest(actor=user):
+                self.client.force_authenticate(user)
+                response = self.client.patch(
+                    f"/api/v1/companies/{self.company.pk}/members/{self.member.pk}/",
+                    {"role": "OWNER"},
+                    format="json",
+                )
+                self.assertEqual(response.status_code, expected)
+                self.assertEqual(list(CompanyMembership.objects.order_by("pk").values()), before)
+
+    def test_suspended_admin_cannot_transfer(self):
+        self.admin.status = "SUSPENDED"
+        self.admin.save(update_fields=["status"])
+        before = list(CompanyMembership.objects.order_by("pk").values())
+        self.client.force_authenticate(self.admin_user)
+        response = self.client.patch(
+            f"/api/v1/companies/{self.company.pk}/members/{self.member.pk}/",
+            {"role": "OWNER"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(list(CompanyMembership.objects.order_by("pk").values()), before)
+
+    def test_admin_cannot_demote_suspend_or_remove_owner(self):
+        self.client.force_authenticate(self.admin_user)
+        url = f"/api/v1/companies/{self.company.pk}/members/{self.owner_membership.pk}/"
+        before = list(CompanyMembership.objects.order_by("pk").values())
+        for changes in ({"role": "ADMIN"}, {"status": "SUSPENDED"}):
+            self.assertEqual(self.client.patch(url, changes, format="json").status_code, 400)
+            self.assertEqual(list(CompanyMembership.objects.order_by("pk").values()), before)
+        self.assertEqual(self.client.delete(url).status_code, 400)
+        self.assertEqual(list(CompanyMembership.objects.order_by("pk").values()), before)
+
+    def test_owner_transfer_has_one_active_owner_and_active_previous_admin(self):
+        self.client.force_authenticate(self.owner_user)
+        response = self.client.patch(
+            f"/api/v1/companies/{self.company.pk}/members/{self.member.pk}/",
+            {"role": "OWNER"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.owner_membership.refresh_from_db()
+        self.assertEqual(
+            (self.owner_membership.role, self.owner_membership.status), ("ADMIN", "ACTIVE")
+        )
+        self.assertEqual(
+            list(
+                CompanyMembership.objects.filter(
+                    company=self.company, role="OWNER", status="ACTIVE"
+                ).values_list("pk", flat=True)
+            ),
+            [self.member.pk],
+        )
+
+    def test_membership_creation_rejects_owner_without_side_effects(self):
+        target = self.make_user("newtarget")
+        for actor in (self.owner_user, self.admin_user):
+            self.client.force_authenticate(actor)
+            before = list(CompanyMembership.objects.order_by("pk").values())
+            response = self.client.post(
+                f"/api/v1/companies/{self.company.pk}/members/",
+                {"recruiter_id": str(target.pk), "role": "OWNER", "status": "ACTIVE"},
+                format="json",
+            )
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(list(CompanyMembership.objects.order_by("pk").values()), before)
+
     def test_recruiter_creation_assigns_owner_and_blocks_membership_mass_assignment(self):
         self.client.force_authenticate(self.make_user("creator"))
         response = self.client.post("/api/v1/companies/", {

@@ -1,5 +1,6 @@
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 from unittest.mock import patch
 
 from django.core.exceptions import PermissionDenied
@@ -12,8 +13,10 @@ from apps.recruiters.models import RecruiterProfile
 from .models import Company, CompanyMembership
 from .services import (
     InvalidMembershipTransition,
+    add_membership,
     create_company,
     remove_membership,
+    set_membership_role,
     set_membership_status,
     transfer_ownership,
 )
@@ -98,6 +101,38 @@ class CompanyOwnershipServiceTests(TestCase):
             f"{local_part}@example.test", password="Test-pass-123", role=User.Role.RECRUITER
         )
         return RecruiterProfile.objects.create(user=user, name=f"Synthetic {local_part.title()}")
+
+    def test_transfer_service_requires_current_active_owner_without_side_effects(self):
+        outsider = self.make_recruiter("transferoutsider")
+        for actor in (self.admin, self.member, outsider):
+            with self.subTest(actor=actor.pk):
+                before = list(CompanyMembership.objects.order_by("pk").values())
+                with self.assertRaises(PermissionDenied):
+                    transfer_ownership(actor=actor, company_id=self.company.pk, new_owner=self.member)
+                self.assertEqual(list(CompanyMembership.objects.order_by("pk").values()), before)
+        for status in ("INVITED", "SUSPENDED"):
+            self.admin_membership.status = status
+            self.admin_membership.save(update_fields=["status"])
+            before = list(CompanyMembership.objects.order_by("pk").values())
+            with self.assertRaises(PermissionDenied):
+                transfer_ownership(actor=self.admin, company_id=self.company.pk, new_owner=self.member)
+            self.assertEqual(list(CompanyMembership.objects.order_by("pk").values()), before)
+
+    def test_generic_creation_and_role_services_cannot_assign_owner(self):
+        target = self.make_recruiter("newowner")
+        for actor in (self.owner, self.admin):
+            before = list(CompanyMembership.objects.order_by("pk").values())
+            with self.assertRaises(InvalidMembershipTransition):
+                add_membership(
+                    actor=actor,
+                    company_id=self.company.pk,
+                    recruiter=target,
+                    role="OWNER",
+                    status="ACTIVE",
+                )
+            with self.assertRaises(InvalidMembershipTransition):
+                set_membership_role(actor=actor, membership_id=self.member_membership.pk, role="OWNER")
+            self.assertEqual(list(CompanyMembership.objects.order_by("pk").values()), before)
 
     def test_company_creation_assigns_first_active_owner(self):
         company = create_company(recruiter=self.make_recruiter("founder"), name="Synthetic New Co")
@@ -275,18 +310,23 @@ class CompanyOwnershipConcurrencyTests(TransactionTestCase):
     def test_concurrent_transfers_leave_exactly_one_active_owner(self):
         owner_id, company_id = self.owner.pk, self.company.pk
         target_ids = [target.pk for target in self.targets]
+        ready = Barrier(2)
 
         def transfer(target_id):
             close_old_connections()
             try:
                 actor = RecruiterProfile.objects.get(pk=owner_id)
                 target = RecruiterProfile.objects.get(pk=target_id)
+                ready.wait(timeout=10)
                 return transfer_ownership(actor=actor, company_id=company_id, new_owner=target).pk
+            except PermissionDenied:
+                return "rejected"
             finally:
                 close_old_connections()
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             results = list(pool.map(transfer, target_ids))
+        self.assertEqual(results.count("rejected"), 1)
         self.assertEqual(len(results), 2)
         self.assertEqual(
             CompanyMembership.objects.filter(

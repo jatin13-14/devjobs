@@ -179,3 +179,97 @@ it('blocks retained role, status and removal callbacks after an authenticated id
   await act(async () => { for (const callback of oldActions) await callback('ADMIN'); });
   expect(http.patch).not.toHaveBeenCalled(); expect(http.delete).not.toHaveBeenCalled();
 });
+
+it('requests bounded member pages and never follows server navigation URLs', async () => {
+  jobsApi.company.mockResolvedValue({ name: 'Paged Company' });
+  jobsApi.recruiterCompanies.mockResolvedValue({ results: [{ id: 'company', role: 'OWNER' }] });
+  http.get.mockResolvedValueOnce({ data: { count: 21, results: [], next: 'https://untrusted.example/' } })
+    .mockResolvedValueOnce({ data: { count: 21, results: [{ id: 'last', recruiter_name: 'Last member', role: 'MEMBER', status: 'INVITED' }], next: null } });
+  mount();
+  fireEvent.click(await screen.findByRole('button', { name: 'Next page' }));
+  expect(await screen.findByText('Last member · MEMBER · INVITED')).toBeInTheDocument();
+  expect(http.get).toHaveBeenLastCalledWith('/companies/company/members/', { params: { pagination: 'page', page: 2, page_size: 20 } });
+  expect(screen.getByRole('button', { name: 'Previous page' })).toBeEnabled();
+});
+it.each(['OWNER', 'ADMIN'])('only OWNER sees the dedicated eligible transfer action: %s', async (role) => {
+  jobsApi.company.mockResolvedValue({ name: 'Company' });
+  jobsApi.recruiterCompanies.mockResolvedValue({ results: [{ id: 'company', role }] });
+  http.get.mockResolvedValue({ data: { count: 2, results: [
+    { id: 'target', recruiter_name: 'Eligible member', role: 'MEMBER', status: 'ACTIVE' },
+    { id: 'invited', recruiter_name: 'Invited member', role: 'MEMBER', status: 'INVITED' },
+  ] } });
+  mount();
+  await screen.findByText('Eligible member · MEMBER · ACTIVE');
+  expect(screen.queryByRole('button', { name: 'Transfer ownership to Invited member' })).not.toBeInTheDocument();
+  if (role === 'ADMIN') {
+    expect(screen.queryByRole('button', { name: 'Transfer ownership to Eligible member' })).not.toBeInTheDocument();
+    return;
+  }
+  fireEvent.click(screen.getByRole('button', { name: 'Transfer ownership to Eligible member' }));
+  expect(await screen.findByText(/You will become an ADMIN/)).toBeInTheDocument();
+  http.patch.mockResolvedValue({ data: {} });
+  jobsApi.recruiterCompanies.mockResolvedValue({ results: [{ id: 'company', role: 'ADMIN' }] });
+  fireEvent.click(screen.getByRole('button', { name: 'Transfer ownership', exact: true }));
+  await waitFor(() => expect(http.patch).toHaveBeenCalledWith('/companies/company/members/target/', { role: 'OWNER' }, expect.objectContaining({ _assertAuthority: expect.any(Function) })));
+  await screen.findByText('Active membership · ADMIN');
+  expect(screen.queryByRole('button', { name: 'Transfer ownership to Eligible member' })).not.toBeInTheDocument();
+});
+it('rejects a retained transfer confirmation after OWNER becomes ADMIN', async () => {
+  jobsApi.company.mockResolvedValue({ name: 'Company' });
+  jobsApi.recruiterCompanies.mockResolvedValue({ results: [{ id: 'company', role: 'OWNER' }] });
+  http.get.mockResolvedValue({ data: [{ id: 'target', recruiter_name: 'Target', role: 'MEMBER', status: 'ACTIVE' }] });
+  mount();
+  await screen.findByRole('button', { name: 'Transfer ownership to Target' });
+  const transfer = retained.memberActions.at(-1);
+  // A failed mutation exposes retry; retry resolves a fresh, reduced membership.
+  http.patch.mockRejectedValue(new Error('revoked'));
+  const change = retained.memberActions.find((callback) => callback);
+  await act(async () => change('ADMIN'));
+  await screen.findByText('Request failed');
+  jobsApi.recruiterCompanies.mockResolvedValue({ results: [{ id: 'company', role: 'ADMIN' }] });
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  await screen.findByText('Active membership · ADMIN');
+  http.patch.mockClear();
+  await act(async () => transfer());
+  expect(http.patch).not.toHaveBeenCalled();
+});
+it('revalidates and hides management after a server permission revocation', async () => {
+  await ownerPage();
+  http.post.mockRejectedValue({ response: { status: 403 } });
+  jobsApi.recruiterCompanies.mockResolvedValue({ results: [] });
+  fireEvent.change(screen.getByLabelText('Recruiter account ID'), { target: { value: 'target' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Add membership' }));
+  await waitFor(() => expect(http.post).toHaveBeenCalled());
+  await waitFor(() => expect(screen.getByLabelText('name')).toBeDisabled());
+  expect(screen.getByText('Request failed')).toBeInTheDocument();
+  controlsAbsent();
+});
+
+it('does not revive retained membership actions after page 1 -> 2 -> 1', async () => {
+  jobsApi.company.mockResolvedValue({ name: 'Company' });
+  jobsApi.recruiterCompanies.mockResolvedValue({ results: [{ id: 'company', role: 'OWNER' }] });
+  http.get.mockResolvedValue({ data: { count: 21, next: '/ignored', results: [
+    { id: 'target', recruiter_name: 'Target', role: 'MEMBER', status: 'ACTIVE' },
+  ] } });
+  mount();
+  await screen.findByRole('button', { name: 'Transfer ownership to Target' });
+  const transfer = retained.memberActions.at(-1);
+  fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+  await screen.findByText('21 memberships · Page 2');
+  fireEvent.click(screen.getByRole('button', { name: 'Previous page' }));
+  await screen.findByText('21 memberships · Page 1');
+  await act(async () => transfer());
+  expect(http.patch).not.toHaveBeenCalled();
+});
+it('revokes queued membership transport authority when the editor unmounts', async () => {
+  const view = await ownerPage();
+  http.post.mockReturnValue(new Promise(() => {}));
+  fireEvent.change(screen.getByLabelText('Recruiter account ID'), { target: { value: 'target' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Add membership' }));
+  await waitFor(() => expect(http.post).toHaveBeenCalled());
+  const config = http.post.mock.calls[0][2];
+  expect(config?._assertAuthority).toBeTypeOf('function');
+  expect(() => config._assertAuthority()).not.toThrow();
+  view.unmount();
+  expect(() => config._assertAuthority()).toThrow();
+});

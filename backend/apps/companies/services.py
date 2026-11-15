@@ -77,13 +77,18 @@ def add_membership(*, actor: RecruiterProfile, company_id, recruiter: RecruiterP
 
 
 @transaction.atomic
-def transfer_ownership(*, actor: RecruiterProfile, company_id, new_owner: RecruiterProfile,
-                       previous_owner_status=CompanyMembership.Status.ACTIVE):
+def transfer_ownership(
+    *,
+    actor: RecruiterProfile,
+    company_id,
+    new_owner: RecruiterProfile,
+    previous_owner_status=CompanyMembership.Status.ACTIVE,
+):
     company = Company.objects.select_for_update().get(pk=company_id)
     _authorize_locked(
         recruiter=actor,
         company_id=company.pk,
-        allowed_roles=[CompanyMembership.Role.OWNER, CompanyMembership.Role.ADMIN],
+        allowed_roles=[CompanyMembership.Role.OWNER],
     )
     _active_recruiter(new_owner)
     memberships = CompanyMembership.objects.select_for_update().filter(company=company)

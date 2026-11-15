@@ -1945,3 +1945,102 @@ Only the requested local commit is authorized; no push, merge, deployment or PR
 operation. Chromium/native Web Locks remain the boundary; optional Redis tests
 may skip, hosted CI is pending, and repeated passes are bounded evidence rather
 than a proof of race freedom. M-06 remains open. Stage 2B.2 is not started.
+
+
+## Stage 2B.2 blocking ownership regression — 2026-11-15
+
+Added CompanyApiTests.test_admin_cannot_take_company_ownership_from_active_owner
+in backend/apps/companies/api_tests.py. It authenticates an existing company ADMIN,
+PATCHes that admin's membership with role OWNER, and asserts HTTP 403 and unchanged
+OWNER/ADMIN database roles. This is intentionally failing evidence, not xfail.
+
+Command: `backend/.venv/bin/python /tmp/devjobs-2b2-contract-audit.py`
+(output redirected to `/tmp/devjobs-2b2-contract-audit.log`). The temporary audit
+harness derives from run_browser.py, retaining owned disposable PostgreSQL 17,
+connection verification and finally cleanup; it narrows pytest to this regression
+and stops before browser provisioning. Result: **FAIL, 1 failed in 0.38s**, actual
+HTTP 200 and roles ADMIN/OWNER. Migrations, Django check and migration consistency
+passed before pytest. Runner reported cleanup for run
+5c1d2b37027c4c8e87adadb43c09c6f0. No development database was used.
+An initial temporary harness import failed before resource creation; its import
+path was corrected. Full frontend/backend, browser, concurrent and staged-export
+acceptance checks were not run because the explicit security stop rule applies.
+
+## Stage 2B.2 ownership repair verification — 2026-11-15
+
+Reproduction: `backend/.venv/bin/python /tmp/devjobs-2b2-contract-audit.py`
+with output `/tmp/devjobs-2b2-reproduce.log`: FAIL as expected, original regression
+HTTP 200, OWNER/ADMIN swapped. Runner-owned PostgreSQL 17; cleanup confirmed.
+Repair gate: `backend/.venv/bin/python /tmp/devjobs-2b2-security.py`:
+34 company tests PASS. Full initial backend gate:
+`backend/.venv/bin/python /tmp/devjobs-2b2-backend.py`: 176 PASS / 8 optional Redis
+SKIP, Django check and migration consistency PASS. Wrappers retain run_browser.py
+container identity/connection verification/finally cleanup and stop before browser.
+Never target development databases or devjobs_test.
+
+New regressions cover ADMIN self/other promotion, owner demotion/suspension/removal,
+MEMBER/suspended ADMIN/outsider/candidate/anonymous transfer denial, no-side-effect
+snapshots, sole-owner success, direct service creation/assignment rejection,
+rollback and exactly one concurrent authorized transfer. Original regression is
+preserved without weakening assertions. Existing invalid-target, cross-company,
+deferred-integrity and pagination query-growth tests remain required.
+
+Frontend checks: `npm test`, `npm run lint`, `npm run build` in frontend.
+Focused company tests cover bounded pages, no following untrusted navigation URLs,
+OWNER-only eligible transfer, post-transfer ADMIN permissions, obsolete confirmation
+rejection and 403 authority revocation, alongside all Stage 2B.1 regressions.
+Chromium workflow adds a real ownership round trip, role restoration, suspension,
+removal and revoked member access. Existing native cross-tab/Strict Mode/429
+regressions remain enabled without retries or relaxed timeouts/throttles.
+
+Final gates use `backend/.venv/bin/python backend/run_browser.py` and
+`backend/.venv/bin/python backend/run_browser_concurrent.py` (owned PostgreSQL 17,
+full pytest/check/migrations plus Chromium and peer identity rejection). Ruff:
+`backend/.venv/bin/ruff check backend`. Format: extract changed company functions
+with ast, dedent, then `ruff format --check --config backend/ruff.toml` on the
+combined fragment; full-file formatting flags historical unchanged code.
+OpenAPI: `/tmp/devjobs-m1-schema-tools/bin/python scripts/validate_openapi.py`.
+
+After working-tree gates pass, stage only authorized files/hunks, run
+`git diff --cached --check`, `git write-tree`, export with `git archive`, and run
+fresh `npm ci`, all frontend checks, Ruff/changed-function format, OpenAPI, pure
+runner safety tests and standalone/concurrent runners against that export.
+Exact results/tree/commit identities belong in the external delivery manifest
+so recording them does not mutate the tested tree. Any failed final gate prevents
+commit. Inventory containers, processes and private temporary resources afterward.
+
+Independent continuation review added page 1 -> 2 -> 1 callback invalidation and
+queued transport revocation. The queued membership regression first failed with
+21 passes / 1 failure (`/tmp/devjobs-2b2-queue-red.log`): no dispatch authority
+validator was supplied. Mutations now pass the existing Axios `_assertAuthority`
+check tied to the originating action lifetime; dispatch/retry rejects a retired
+editor. Page transitions use distinct action identities so returning to a numeric
+page cannot revive its old callbacks. Company targeted gate after synchronized
+concurrency coverage: 37 PASS (`/tmp/devjobs-2b2-security-final.log`).
+
+Development Chromium failures were retained: the first run selected Ant Design's
+hidden virtual accessibility option; the second selector also matched its visible
+label and failed strict selection, as did the overlapping concurrent pair. The
+corrected selector targets visible `.ant-select-item-option-content` with exact
+text. No timeout, throttle or assertion was weakened; no automatic retry enabled.
+Logs: `/tmp/devjobs-2b2-browser.log`, `-browser-final.log`, `-concurrent.log`.
+Final fresh standalone/concurrent and exported-tree outcomes are in delivery.
+
+Working-tree completed commands: frontend lint, `npm test` (192 / 20 files),
+build PASS (`/tmp/devjobs-2b2-frontend-complete.log`, `-build-complete.log`).
+Standalone `backend/.venv/bin/python backend/run_browser.py` PASS: 179 PostgreSQL
+tests / 8 optional Redis skipped, checks/migrations, Chromium 7/7
+(`/tmp/devjobs-2b2-browser-corrected.log`, run 05879391d258421db52d9b682849d699).
+Concurrent `backend/.venv/bin/python backend/run_browser_concurrent.py` PASS:
+both 179/8 plus 7/7 Chromium; peer service/cluster rejection; zero browser errors.
+Runs 82062704c9294e2c8dec964c3cbd99cb / f3f51d4466064babbf071f50b62e035d;
+`/tmp/devjobs-2b2-concurrent-corrected.log`. All owned resources reported cleaned.
+Some working-tree runs observed Vite updates; the frozen exported snapshot must
+pass again. Ruff, changed-function format, OpenAPI (39 paths / 55 operations,
+three negative controls) and 16 pure isolation tests PASS. Existing Ant Design
+warnings and 762.49 kB bundle advisory remain. Final snapshot results are external.
+
+Export review added a 390px membership-screen horizontal-overflow and keyboard
+focus check. The target-specific transfer accessible name remains intact while
+its visible button label is bounded. The initial exported tree is superseded;
+all exact-snapshot gates must pass again on the rebuilt tree before commit.

@@ -2258,3 +2258,87 @@ Only the requested local commit is authorized; no push, merge, deployment or PR
 operation. Chromium/native Web Locks remain the boundary; optional Redis tests
 may skip, hosted CI is pending, and repeated passes are bounded evidence rather
 than a proof of race freedom. M-06 remains open. Stage 2B.2 is not started.
+
+
+## Stage 2B.2 API audit — 2026-11-15
+
+**FAIL / BLOCKED before UI implementation.** Expected branch
+feat/admin-workspace-final, HEAD 97d5f92fbc84cf0001011bb552df4569db0a0b11
+and tree e58e847274c81b12d3b62d567e15da80169ed5c1 verified; initial index
+empty, no untracked files. Existing PROJECT_STATUS and LOCAL_DEVELOPMENT local
+operations notes preserved. Process inventory found no competing task runner.
+
+Material authorization mismatch: company transfer_ownership permits ACTIVE ADMIN
+as well as OWNER. Added a focused real-API regression demonstrating an ADMIN can
+PATCH their own membership to OWNER, demoting the original owner. Disposable
+PostgreSQL 17 result: one failing test, HTTP 200 and changed database ownership
+instead of expected 403 and unchanged ownership. Owned runner cleanup reported;
+no development database touched. Contract matrix and unsupported workflows are
+recorded in docs/API_CONVENTIONS.md; reproduction in docs/TESTING_STRATEGY.md.
+
+Per the requested serious-backend-vulnerability stop rule, no dependent UI,
+authorization repair, staging, exact-snapshot acceptance or local commit was
+performed. Full acceptance suites remain unrun; no production readiness claim.
+No API/schema/dependency/production-settings change, push, merge, deployment or
+PR #1 modification. M-06 remains open. Stage 2B.3 not started. Next required work:
+explicitly authorize an OWNER-only backend transfer policy and regression repair,
+then resume the Stage 2B.2 audit and implementation gates.
+
+## Stage 2B.2 ownership repair and membership UI — 2026-11-15
+
+The authorized repair supersedes the blocked API audit above. Root cause:
+transfer_ownership allowed ADMIN as an initiating actor. It now requires the
+current ACTIVE OWNER under the existing company/membership locks and atomic
+transaction. PATCH continues using that single boundary; no API shape, schema,
+migration, dependency or production-settings changes. Existing owner constraints
+are preserved. Ordinary OWNER/ADMIN operations retain their contract.
+
+CompanyPage now requests bounded 20-member pages, supports all creation statuses,
+nonowner self-management, role/status changes, removal confirmation and a dedicated
+OWNER-only transfer confirmation using the existing PATCH endpoint. Successful
+mutations re-resolve membership; 403 revokes local authority pending revalidation.
+Retained actions validate their originating membership resolution and page.
+Account/company/session isolation and Stage 2B.1 authentication remain in place.
+
+Original exploit reproduced: 1 failure, HTTP 200 and swapped ownership on owned
+PostgreSQL 17; cleanup confirmed. Initial repaired company suite: 34 passed.
+Initial full security gate: 176 passed / 8 optional Redis skipped; Django checks,
+migrations and OpenAPI passed. Further service/API regressions cover direct
+OWNER creation rejection and actor matrix. Final acceptance commands/results and
+exact staged/commit identities are recorded in the delivery report outside the
+tested tree. Formatting is checked for changed functions; historical surrounding
+company-file formatting is preserved. Full-file format checks flag baseline code.
+
+See docs/STAGE_2B2_MEMBERSHIPS.md, API_CONVENTIONS.md and TESTING_STRATEGY.md.
+No invented invitation/acceptance workflows. M-06 remains open. No push, merge,
+deployment, PR #1 modification or Stage 2B.3 work. Local commit is conditional on
+all gates passing on the exact staged export; unrelated operations notes excluded.
+
+Additional independent review fixed page A/B/A action revival and added the
+existing Axios dispatch/retry authority hook to company mutations. A queued
+request regression reproduced the missing hook before repair (21 passed / 1
+failed); completed frontend gates supersede that development failure. Final
+company PostgreSQL gate: 37 passed, including a barrier synchronizing concurrent
+transfer attempts before service entry. Development Chromium selector failures
+are documented in TESTING_STRATEGY.md and retained in external logs.
+
+Working-tree gates completed: frontend `npm test` 192 passed / 20 files, ESLint
+and build PASS (existing 762.49 kB chunk advisory). PostgreSQL 17 final company
+suite 37 PASS; full standalone and each concurrent runner 179 PASS / 8 optional
+Redis SKIP, Django checks and migration consistency PASS. Standalone Chromium
+7/7 PASS; concurrent Chromium 7/7 each, peer service/cluster isolation PASS,
+zero unexpected browser errors, all owned resources reported cleaned. Ruff,
+changed-function format, 16 pure runner safety tests and OpenAPI 39 paths / 55
+operations / three negative controls PASS. Some working-tree browser runs observed
+Vite updates during development; the frozen exported snapshot is the final gate.
+Exact results and commit identity remain external to keep the tested tree stable.
+
+Export-review follow-up keeps transfer button text short with the target name in
+its accessible label, and adds a 390px membership-screen overflow/focus check.
+The first export is superseded; only the rebuilt frozen export may be committed.
+
+The mobile follow-up passes working-tree frontend 192 tests/lint/build and a
+fresh isolated 179/8 PostgreSQL + 7/7 Chromium run, including 390px overflow and
+transfer-button focus (run c837fdcd1f1a494493a6a794081e608d). The first export
+passed all checks but is superseded by this follow-up; rebuilt export gates are
+mandatory before the one authorized local commit.

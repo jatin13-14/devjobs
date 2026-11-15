@@ -341,3 +341,88 @@ remain authoritative. Requests use configured API paths and numeric page values,
 never server-provided absolute navigation URLs. Company membership list and
 candidate skill UIs retain legacy behavior. M-06 remains open; Stage 2B.2/2B.3 and
 legacy retirement are outside this change. Dashboard job aggregation is unchanged.
+
+
+## Stage 2B.2 contract audit — 2026-11-15 (blocked)
+
+Audited baseline `97d5f92fbc84cf0001011bb552df4569db0a0b11`, tree
+`e58e847274c81b12d3b62d567e15da80169ed5c1`. Sources: companies API,
+serializers, models, services, URL configuration, collection pagination, existing
+company API/service/concurrency tests and OpenAPI. This records actual behavior;
+it does not approve the ownership authorization policy.
+
+All private operations below require JWT authentication, an active recruiter
+account/profile and ACTIVE OWNER or ADMIN membership in a non-suspended company.
+MEMBER, unaffiliated, suspended-membership, candidate and platform-admin callers
+are denied management access (403); unauthenticated requests require authentication
+(401). MEMBER has no private member-list read permission.
+
+| Method and URL (prefix `/api/v1`) | Body | Success / pagination | Validation and effects |
+|---|---|---|---|
+| GET `/companies/{company_id}/members/` | None | 200 array by default; `?pagination=page` returns count/next/previous/results | All statuses, ordered created_at/id; page_size default 20, maximum 100; invalid pagination 400, missing page 404; read only |
+| POST `/companies/{company_id}/members/` | recruiter_id account UUID; role ADMIN/MEMBER (default MEMBER); status INVITED/ACTIVE/SUSPENDED (default INVITED) | 201 membership | Existing active recruiter/profile required; unknown fields, duplicate/self assignment, invalid role/status 400; atomic service locks company |
+| PATCH `/companies/{company_id}/members/{membership_id}/` | role and/or status | 200 membership | Empty/unknown/invalid fields 400; cross-company/missing target 404; transactional role/status operations |
+| DELETE `/companies/{company_id}/members/{membership_id}/` | None | 204 | Hard delete; active owner protected with 400; target scoped to company, missing target 404; atomic service |
+
+Membership response fields are id, recruiter_id, recruiter_name, role, status,
+created_at and updated_at. No email/phone. There is no membership-detail GET,
+dedicated ownership-transfer URL, email invitation, acceptance, delivery, token
+or account-provisioning workflow. INVITED is a stored status only.
+
+OWNER and ADMIN can create ADMIN/MEMBER memberships, manage other ADMINs,
+change nonowner roles, and set nonowner statuses among all three values.
+Self-demotion/suspension/deletion of nonowners is permitted; subsequent authority
+is lost. Active-owner demotion, suspension and deletion are rejected; ownership
+must first be transferred. PATCH role OWNER invokes the atomic transfer service:
+target must be an existing ACTIVE member with an active recruiter account;
+previous owner becomes ACTIVE ADMIN. Company then membership locks and PostgreSQL
+constraints/triggers preserve exactly one active owner. No client version/ETag
+precondition exists; locking serializes writes but does not reject stale intent.
+
+**Blocking authorization finding:** transfer_ownership authorizes OWNER **and
+ADMIN**. An ADMIN can PATCH their own membership with role OWNER and replace the
+current owner. This violates this milestone's OWNER-only ownership guarantee.
+A real API regression on disposable PostgreSQL 17 returned
+`(200, former_owner=ADMIN, actor=OWNER)` instead of `(403, OWNER, ADMIN)`.
+Hiding frontend controls cannot enforce the required boundary. Authorization
+semantics were not changed. Per the requested stop rule, dependent UI work and
+commit gates are blocked pending an explicitly authorized backend policy repair.
+The supported frontend scope would otherwise include bounded management lists,
+direct existing-recruiter creation and nonowner role/status/removal controls;
+private read-only member lists and invented invitation flows are excluded.
+
+## Stage 2B.2 corrected ownership contract — 2026-11-15
+
+This supersedes the blocking policy above. `transfer_ownership` now authorizes
+only the current ACTIVE OWNER after locking the company and re-reading the actor
+membership. PATCH with role OWNER continues to delegate to that single service;
+there is no new URL or serializer contract. An ACTIVE ADMIN receives 403 for
+self-promotion or promotion of another member. Only ownership authorization is
+changed; ordinary ADMIN membership management remains supported.
+
+| Actor | List/create ADMIN or MEMBER/manage nonowner | Transfer ownership |
+|---|---|---|
+| ACTIVE OWNER | Allowed | Allowed to eligible ACTIVE recruiter member |
+| ACTIVE ADMIN | Allowed, including eligible self-management | 403 |
+| MEMBER / INVITED / SUSPENDED / unaffiliated recruiter | 403 | 403 |
+| Candidate / platform admin | 403 | 403 |
+| Anonymous | 401 | 401 |
+
+Direct demotion, suspension or removal of the active owner remains 400 for
+managers. Creation with OWNER remains 400. Non-ACTIVE and already-owner
+transfer targets remain 400; inactive/nonrecruiter target accounts are denied 403.
+Missing or cross-company membership identifiers remain 404. The old owner becomes ACTIVE
+ADMIN. A competing request from the former owner is reauthorized under the lock
+and rejected after the first successful transfer. Company locks, atomic service
+transactions, unique active-owner constraint and deferred owner-preservation
+triggers remain unchanged. No schema, migration, dependency or production-setting
+change. This does not add optimistic concurrency for ordinary membership edits.
+
+The UI requests `pagination=page&page=N&page_size=20`, follows numeric pages on
+the configured endpoint, and displays total/page plus previous/next controls.
+OWNER/ADMIN can create existing recruiter memberships in any supported status,
+change ADMIN/MEMBER roles and nonowner statuses, and confirm eligible removal.
+OWNER alone sees a separate transfer confirmation for ACTIVE nonowner members.
+No acceptance, email, delivery or account-creation workflow is implied by INVITED.
+Mutations re-resolve authority; 403 triggers revalidation. Account/company
+switches and obsolete membership/page callbacks cannot retain action authority.

@@ -495,6 +495,11 @@ paths:
         schema: { type: string, format: uuid }
     patch:
       summary: Change membership role or status, including ownership transfer
+      description: >-
+        Active OWNER/ADMIN may manage nonowner roles and statuses. Assigning OWNER
+        requires the current ACTIVE OWNER and an eligible ACTIVE recruiter member;
+        the previous owner becomes ACTIVE ADMIN atomically. Direct demotion,
+        suspension or removal of the active owner is rejected.
       operationId: updateCompanyMember
       security: [{ bearerAuth: [] }]
       requestBody:
@@ -509,7 +514,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CompanyMembership' }
         '400': { $ref: '#/components/responses/ValidationError' }
-        '403': { description: "Active owner or admin membership required." }
+        '403': { description: "Active owner or admin membership required; ownership transfer requires the current active owner." }
         '404': { description: "Membership does not belong to this company." }
     delete:
       summary: Remove a non-owner membership
