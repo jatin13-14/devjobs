@@ -2342,3 +2342,71 @@ fresh isolated 179/8 PostgreSQL + 7/7 Chromium run, including 390px overflow and
 transfer-button focus (run c837fdcd1f1a494493a6a794081e608d). The first export
 passed all checks but is superseded by this follow-up; rebuilt export gates are
 mandatory before the one authorized local commit.
+
+
+## Stage 2B.3 candidate skills contract audit — 2026-11-15
+
+**FAIL / blocked before dependent UI implementation.** Branch
+feat/admin-workspace-final, HEAD 269dc29e976f1446617d2690b6c35d3f640663cc,
+tree 5787fa418ca7afe4d49e7a7c10c1e9ab59b3d3cb verified; initial index empty,
+no untracked files. Existing local operations notes preserved.
+
+Contract audit found a server validation gap: SkillInputSerializer checks the raw
+80-character cap before Unicode lowercasing. Eighty U+0130 characters normalize
+to 160 code points; Skill.save/full_clean raises an unhandled Django
+ValidationError, producing HTTP 500 instead of a field-level 400. A deterministic
+real-API regression preserves the failure. No authorization bypass demonstrated.
+The smallest proposed repair adds canonical-length validation without changing
+normalization or schema; explicit owner authorization is required by the task's
+backend-contract boundary before repair and dependent UI work.
+
+Final owned disposable PostgreSQL 17 audit: 18 PASS / 1 FAIL / 0 SKIP, 19 collected
+in 3.32s. Migrations, Django check and migration consistency PASS. Run
+39f26fbf6b31465f965e09fb88585dc5; owned cleanup reported. Changed-test Ruff lint,
+format and diff whitespace PASS. Initial admin fixture error was corrected using
+the existing superuser manager; original failure log retained. See
+`docs/STAGE_2B3_SKILLS.md` for exact matrix, root cause, evidence and limits.
+
+No frontend implementation, production backend repair, API/schema/dependency or
+production-settings change. Full acceptance/browser/concurrent/peer/accessibility,
+OpenAPI/runner safety and exact-snapshot gates not run. No staging or local commit;
+no tested staged tree exists. Development database untouched. No push, merge,
+deployment, PR #1 modification or Stage 2C work. M-06 remains open. Next: authorize
+the narrow serializer validation repair, then resume all Stage 2B.3 requirements.
+
+## Stage 2B.3 authorized Unicode repair and skills UI — 2026-11-15
+
+The preceding blocked audit is historical and superseded by explicit repair
+permission. Raw 80-code-point input could expand to 160 during lowercasing,
+causing Skill.save/full_clean to raise an unhandled Django ValidationError.
+SkillInputSerializer now checks the normalized value against the actual model
+maximum and returns a name field HTTP 400. Raw limit, normalization, constraints,
+API shape, schema, dependencies, authentication and production settings unchanged.
+Original regression preserved; valid Unicode expansion and empty-input tests added.
+
+Shared own-skills UI on profile and skills screens provides bounded pages,
+add-by-name, confirmed removal, field errors, loading/empty states, duplicate
+submission prevention, last-page fallback and captured session/view authority.
+No edit, catalog, autocomplete or add-by-ID workflow. Native cross-tab and real
+Axios/provider regressions supplement existing authentication and browser gates.
+
+Reproduction 18 PASS / 1 FAIL; repaired focused API gate 20 PASS; initial full
+owned PostgreSQL 17 gate 185 PASS / 8 optional Redis SKIP. Django checks/migrations,
+Ruff, changed-method formatting, OpenAPI and 16 pure runner safety checks PASS.
+Final full frontend/browser/concurrent and exact exported-index gate results,
+tested tree and local commit identity are reported in the final delivery outside
+the tested tree. Commit remains conditional on all gates passing with unchanged
+index. See docs/STAGE_2B3_SKILLS.md and TESTING_STRATEGY.md. Unrelated operations
+notes preserved. M-06 open. No push, merge, deployment, PR edit or Stage 2C work.
+
+### Stage 2B.3 verification recovery — 2026-11-16
+
+Recovered completed standalone Chromium 9/9 and concurrent Chromium 9/9 each;
+all three owned PostgreSQL suites report 185 passed / 8 optional Redis skipped.
+Peer rejection and cleanup are recorded, with no owned containers remaining.
+Final independent source review found no critical skills/session ownership issue.
+See TESTING_STRATEGY.md for recovered run identities and audit boundaries.
+Only Stage 2B.3 source/tests/docs are eligible for staging; unrelated operations
+notes remain excluded and preserved. The exact staged export must pass all
+required gates before the single authorized local commit. Final tree and commit
+identities/results are delivered externally to preserve the tested tree.

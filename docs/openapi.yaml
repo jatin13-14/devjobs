@@ -740,6 +740,7 @@ paths:
     post:
       summary: Add a skill to the authenticated candidate
       operationId: addCandidateSkill
+      description: Raw input is limited to 80 Unicode code points. Existing whitespace and lowercase normalization is applied; the normalized name must also fit the model limit of 80 code points. Invalid names return a name field error with HTTP 400.
       security: [{ bearerAuth: [] }]
       requestBody:
         required: true

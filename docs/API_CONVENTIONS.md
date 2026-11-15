@@ -426,3 +426,29 @@ OWNER alone sees a separate transfer confirmation for ACTIVE nonowner members.
 No acceptance, email, delivery or account-creation workflow is implied by INVITED.
 Mutations re-resolve authority; 403 triggers revalidation. Account/company
 switches and obsolete membership/page callbacks cannot retain action authority.
+
+
+## Stage 2B.3 candidate skills audit — 2026-11-15
+
+Exact contract matrix and unsupported operations are recorded in
+[STAGE_2B3_SKILLS.md](STAGE_2B3_SKILLS.md). GET/POST own skills and DELETE own
+association are supported; no edit, global search or autocomplete endpoint exists.
+New UI should use bounded `pagination=page` responses, retaining legacy arrays for
+compatibility. Candidate profile responses do not embed skills.
+
+Known blocking validation defect: the POST serializer checks raw length <=80
+before Unicode lowercasing. Eighty U+0130 characters expand to 160 code points;
+model validation raises an unhandled Django ValidationError (HTTP 500). The audit
+regression expects a field-level 400 and currently fails. No normalization or API
+repair was authorized or implemented. Ordinary normalization/duplicates, ownership,
+role denial and pagination contracts passed the focused PostgreSQL audit.
+
+### Authorized repair and UI continuation
+
+The preceding blocked audit is historical. SkillInputSerializer now checks the
+canonical name against `Skill._meta.get_field("name").max_length` after the
+existing whitespace/lowercase normalization. Raw input remains capped at 80;
+expansion beyond the model maximum returns HTTP 400 with a `name` field error,
+without creating a Skill or association. No truncation or normalization-policy
+change. The profile and skills screens use the same paginated own-skills UI,
+add by name and confirmed association removal. No new endpoints are introduced.

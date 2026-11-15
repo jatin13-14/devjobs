@@ -2044,3 +2044,111 @@ Export review added a 390px membership-screen horizontal-overflow and keyboard
 focus check. The target-specific transfer accessible name remains intact while
 its visible button label is bounded. The initial exported tree is superseded;
 all exact-snapshot gates must pass again on the rebuilt tree before commit.
+
+
+## Stage 2B.3 candidate skills blocking contract audit — 2026-11-15
+
+New `backend/apps/candidates/skills_contract_tests.py` verifies normalization,
+Unicode/punctuation support, duplicate reuse, unknown/invalid input, cross-account
+privacy, GET/POST/DELETE role denial and last-page deletion/fallback. Its Unicode
+length-expansion regression intentionally fails: POST 80 U+0130 characters returns
+500 instead of 400 because normalized model length validation is not translated
+into a DRF field error. Do not skip/xfail or weaken this assertion.
+
+Command from repository root:
+`backend/.venv/bin/python /tmp/devjobs-2b3-contract-audit.py`
+(log `/tmp/devjobs-2b3-contract-audit.log`). This session-only wrapper derives from
+run_browser.py, retains owned disposable PostgreSQL 17 identity checks/finally
+cleanup, and runs pytest with `--ds=config.settings.e2e` on
+`apps/candidates/skills_contract_tests.py`, `apps/candidates/api_tests.py` and
+`config/collection_pagination_tests.py`; stops before browser provisioning.
+Final result: **18 passed / 1 failed / 0 skipped, 19 collected, 3.32s**.
+Migrations, Django check and migration consistency PASS. Run
+39f26fbf6b31465f965e09fb88585dc5; owned cleanup reported. No development database.
+Initial sandbox Docker denial preceded resource creation. Initial host run had
+17 passes and 2 failures, one caused by an incorrect ADMIN test fixture; fixed via
+create_superuser. Original log retained as `-audit-initial.log`.
+
+`backend/.venv/bin/ruff check backend/apps/candidates/skills_contract_tests.py`,
+`backend/.venv/bin/ruff format --check backend/apps/candidates/skills_contract_tests.py`
+and `git diff --check` PASS. Full acceptance, frontend, standalone/concurrent
+Chromium, peer isolation, accessibility, OpenAPI, runner safety and exact staged
+export checks were not run; no commit was created. See STAGE_2B3_SKILLS.md for
+root cause and the narrow backend validation repair requiring authorization.
+
+### Authorized Stage 2B.3 continuation
+
+The blocking audit above is superseded by the authorized serializer repair.
+Original regression retained; valid ASCII, Unicode and 40 U+0130 (80 normalized
+code points) coverage added, alongside empty input. Reproduction in this session:
+18 PASS / 1 FAIL, exact stack CandidateSkillsView.post → get_or_create →
+Skill.save → full_clean → Django ValidationError. Repaired focused API/profile/
+pagination run: 20 PASS. Full owned PostgreSQL 17 backend gate: 185 PASS / 8
+optional Redis SKIP (193 collected), Django checks and migration consistency PASS.
+
+Commands: `backend/.venv/bin/python /tmp/devjobs-2b3-contract-audit.py`,
+`backend/.venv/bin/python /tmp/devjobs-2b3-backend-gate.py` (session-only isolated
+wrappers); frontend `npm test`, `npm run lint`, `npm run build`; backend
+`.venv/bin/python -m unittest config.test_e2e_safety_unit config.test_e2e_runtime_unit`
+(16 PASS); `backend/.venv/bin/ruff check backend`; changed-method formatting
+(extracted validate_name) and full skills_contract_tests.py formatting;
+`/tmp/devjobs-m1-schema-tools/bin/python scripts/validate_openapi.py` (39 paths /
+55 operations / three negative controls). Existing surrounding api.py formatting
+is preserved; full-file format check reports baseline differences.
+
+Skills component tests exercise synchronous duplicate guards, field errors,
+page/unmount authority invalidation, pagination fallback and late results.
+Real Axios/provider tests cover GET/POST/DELETE across A→B, A→B→A, logout,
+same-user replacement, unmount, plus queued transport cancellation. Existing
+authentication tests remain required. Native Chromium checks include held storage
+events before cross-tab replacement, real API skill pagination/add/remove/Unicode
+400, profile integration, 1440/768/390 widths and keyboard focus/removal.
+
+Development-only failures: an initial command used frontend-prefixed paths while
+already in frontend; no source was changed by that invocation. The profile test
+initially submitted while skills were still loading; it now awaits the actual
+empty state and configures the server list before submitting. Stable Add skill
+accessible name avoids decorative loading-icon selector changes. A direct pytest
+invocation for pure safety tests lacked Django settings; the documented unittest
+command passed without database setup. Logs remain under /tmp/devjobs-2b3-*.
+Final frozen export results and tested/commit identities are reported externally
+to avoid changing the tree after verification. No earlier run substitutes for
+that final acceptance gate.
+
+The first combined Chromium run passed the two new skill scenarios but failed
+existing admin retry/registration workflows because the three new accounts
+consumed shared anonymous quotas. The owned runner now provisions those synthetic
+candidate profiles and JWT fixtures directly in its already-verified disposable
+cluster, alongside its existing admin fixture. No rate, cache, retry limit or
+arbitrary sleep changed. Tokens remain process-only and are not logged. The
+failed run cleaned its resources; final standalone/concurrent gates must rerun.
+Final working-tree frontend gate: 213 tests / 22 files PASS, lint and build PASS
+(existing large-chunk advisory). Session coverage includes three queued transport
+cancellation tests. Strict Mode effect cleanup also invalidates each GET response
+independently of the rendered page lifetime.
+
+### Interrupted verification recovery — 2026-11-16
+
+Recovered complete working-tree logs, including final summaries and cleanup:
+`/tmp/devjobs-2b3-browser-final.log` records run
+8f3c180bd0454e8e969d1de4582332be, PostgreSQL 185 passed / 8 optional Redis
+skipped, Chromium 9/9. `/tmp/devjobs-2b3-concurrent.log` records runs
+7269e35b8ab84411aa797f2149ad4aac and 47649f54e81749cbaf035442b27071f6,
+each PostgreSQL 185/8 and Chromium 9/9, peer rejection and owned cleanup.
+No interrupted run is counted as a pass. Docker inventory contains only the
+unrelated stopped welcome container. Earlier fixture-quota failure remains
+historical evidence and is superseded by these completed corrected runs.
+
+Separate final source review found no critical issue in normalized-length checks,
+candidate ownership, page fallback, synchronous duplicate guards, Strict Mode
+response invalidation, retained callbacks, session replacement, stale responses
+or queued dispatch. The shared Axios transport validates both session and view
+authority at dispatch, retry and response; provider epoch remounts invalidate
+A/B/A and same-user replacement lifetimes. Tests cover these bounded guarantees.
+Cancellation cannot roll back a request already dispatched to its original user.
+
+Final acceptance runs `/tmp/devjobs-2b3-snapshot-verify.py <export>` against a
+`git archive` export of the staged tree, with locked `npm ci`, full frontend
+tests/lint/build, Ruff, changed-code format, OpenAPI, pure runner safety, standalone
+and concurrent owned PostgreSQL 17/Chromium. Exact results and tree/commit IDs
+remain external so the tested tree does not change after verification.

@@ -52,6 +52,11 @@ class SkillInputSerializer(RejectUnknownFieldsMixin, serializers.Serializer):
         normalized = " ".join(value.split()).lower()
         if not normalized:
             raise serializers.ValidationError("This field may not be blank.")
+        maximum = Skill._meta.get_field("name").max_length
+        if len(normalized) > maximum:
+            raise serializers.ValidationError(
+                f"Ensure this value has at most {maximum} characters after normalization."
+            )
         return normalized
 
 

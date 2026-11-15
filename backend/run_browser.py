@@ -173,6 +173,25 @@ def main():
             os.environ.update(
                 E2E_ADMIN_EMAIL=email, E2E_ADMIN_PASSWORD=os.environ["E2E_FIXTURE_PASSWORD"]
             )
+            # Skills scenarios must not consume the anonymous login/registration
+            # quota used by the authentication regression scenarios in this run.
+            from rest_framework_simplejwt.tokens import RefreshToken
+
+            from apps.candidates.models import CandidateProfile
+
+            skills_accounts = {}
+            for suffix in ("workflow", "tab-a", "tab-b"):
+                candidate = User.objects.create_user(f"skills-{suffix}-{run}@example.test")
+                CandidateProfile.objects.create(
+                    user=candidate, full_name=f"Synthetic skills {suffix}"
+                )
+                refresh = RefreshToken.for_user(candidate)
+                skills_accounts[suffix] = {
+                    "access": str(refresh.access_token),
+                    "refresh": str(refresh),
+                    "user": {"id": str(candidate.pk), "role": candidate.role},
+                }
+            os.environ["E2E_SKILLS_ACCOUNTS"] = json.dumps(skills_accounts)
             connection.close()
             identities = {}
             for role, listener, command, cwd in (
