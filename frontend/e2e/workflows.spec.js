@@ -37,6 +37,16 @@ async function inspectWorkspace(page, role) {
   await page.setViewportSize({ width: 1440, height: 960 });
 }
 
+async function mobileKeyboardSubmit(page, name) {
+  await page.setViewportSize({ width: 390, height: 960 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const submit = page.getByRole('button', { name, exact: true });
+  await expect(submit).toBeEnabled();
+  await submit.focus();
+  await expect(submit).toBeFocused();
+  await submit.press('Enter');
+}
+
 async function register(page, role) {
   const email = `e2e-${role}-${run}@example.test`;
   await page.goto(`/register/${role}`);
@@ -90,7 +100,7 @@ test('candidate, recruiter and administrator workflow with private access enforc
   await inspectWorkspace(candidate, 'candidate');
   await candidate.goto('/candidate/profile');
   await candidate.getByLabel('professional headline').fill('Synthetic browser engineer');
-  await candidate.getByRole('button', { name: 'Save profile' }).click();
+  await mobileKeyboardSubmit(candidate, 'Save profile');
   await expect(candidate.getByText('Changes saved')).toBeVisible();
   await candidate.getByLabel('Skill', { exact: true }).fill('Python');
   await candidate.getByRole('button', { name: 'Add skill' }).click();
@@ -109,7 +119,11 @@ test('candidate, recruiter and administrator workflow with private access enforc
   const xref = Buffer.byteLength(pdf); pdf += 'xref\n0 4\n0000000000 65535 f \n';
   offsets.slice(1).forEach((offset) => { pdf += `${String(offset).padStart(10, '0')} 00000 n \n`; });
   pdf += `trailer\n<< /Root 1 0 R /Size 4 >>\nstartxref\n${xref}\n%%EOF\n`;
-  await candidate.locator('input[type=file]').setInputFiles({ name: 'synthetic.pdf', mimeType: 'application/pdf', buffer: Buffer.from(pdf) });
+  await expect.poll(() => candidate.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  const choosing = candidate.waitForEvent('filechooser');
+  const upload = candidate.locator('button').filter({ hasText: /^Upload resume$/ });
+  await upload.focus(); await expect(upload).toBeFocused(); await upload.press('Enter');
+  await (await choosing).setFiles({ name: 'synthetic.pdf', mimeType: 'application/pdf', buffer: Buffer.from(pdf) });
   await expect(candidate.getByRole('button', { name: 'Download resume' })).toBeVisible();
 
   const recruiterContext = await browser.newContext(); const recruiter = await recruiterContext.newPage();
@@ -119,8 +133,9 @@ test('candidate, recruiter and administrator workflow with private access enforc
   await inspectWorkspace(recruiter, 'recruiter');
   await recruiter.goto('/recruiter/profile');
   await recruiter.getByLabel('designation').fill('Synthetic hiring lead');
-  await recruiter.getByRole('button', { name: 'Save profile' }).click();
+  await mobileKeyboardSubmit(recruiter, 'Save profile');
   await expect(recruiter.getByText('Changes saved')).toBeVisible();
+  await recruiter.setViewportSize({ width: 1440, height: 960 });
   await recruiter.goto('/candidate/profile');
   await expect(recruiter).toHaveURL(/recruiter/);
   await recruiter.goto('/recruiter/companies/new');
@@ -206,7 +221,7 @@ test('candidate, recruiter and administrator workflow with private access enforc
   await candidate.locator(`a[href="/jobs/${job.id}"]`).click();
   await candidate.getByRole('button', { name: 'Apply for this job' }).click();
   await candidate.getByLabel('Cover letter').fill('Synthetic application');
-  await candidate.getByRole('button', { name: 'Submit application' }).click();
+  await mobileKeyboardSubmit(candidate, 'Submit application');
   await expect(candidate).toHaveURL(/candidate\/applications\/[0-9a-f-]+/);
   await candidate.goto('/candidate/applications');
   await expect(candidate.getByRole('heading', { name: 'My applications' })).toBeVisible();
@@ -301,8 +316,9 @@ test('candidate, recruiter and administrator workflow with private access enforc
   const candidateDownload = candidate.waitForEvent('download');
   await candidate.getByRole('button', { name: 'Download resume' }).click();
   expect((await candidateDownload).suggestedFilename()).toContain('.pdf');
-  await candidate.getByRole('button', { name: 'Remove resume', exact: true }).click();
-  await candidate.getByRole('button', { name: 'Remove', exact: true }).click();
+  await candidate.getByRole('button', { name: 'Remove resume', exact: true }).focus();
+  await candidate.getByRole('button', { name: 'Remove resume', exact: true }).press('Enter');
+  await candidate.getByRole('button', { name: 'Remove', exact: true }).press('Enter');
   await expect(candidate.getByRole('status')).toHaveText('No resume uploaded.');
   await candidate.getByRole('button', { name: 'Open user menu' }).click();
   await candidate.getByRole('menuitem', { name: /Log out/i }).click();

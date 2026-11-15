@@ -1,6 +1,6 @@
 import { message } from 'antd';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AdminPage } from './AdminPage.jsx';
 import { RouteGuard } from '../auth/RouteGuard.jsx';
@@ -9,7 +9,9 @@ import { useAuth } from '../auth/useAuth.js';
 vi.mock('../auth/api.js', () => ({ http: { get: vi.fn(), post: vi.fn() } }));
 vi.mock('../auth/useAuth.js', () => ({ useAuth: vi.fn() }));
 beforeEach(() => { vi.clearAllMocks(); http.get.mockImplementation((url) => Promise.resolve({ data: url.includes('overview') ? { companies: 1 } : { count: 1, results: [{ id: 'one', name: 'Test Company', is_suspended: false }] } })); });
-afterEach(() => { cleanup(); message.destroy(); });
+// Static messages own React roots outside the rendered test container. Drain
+// their teardown before Vitest disposes this file's JSDOM window.
+afterEach(async () => { await act(async () => { cleanup(); message.destroy(); }); });
 it('denies ordinary users access to the admin route', () => {
   useAuth.mockReturnValue({ user: { role: 'recruiter' } });
   render(<MemoryRouter initialEntries={['/admin']}><Routes><Route element={<RouteGuard platformAdmin />}><Route path="/admin" element={<AdminPage />} /></Route><Route path="/" element={<p>Public jobs</p>} /></Routes></MemoryRouter>);

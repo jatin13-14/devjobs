@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Card, Empty, Spin, Tag } from 'antd';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useViewAuthority } from '../../auth/useViewAuthority.js';
 import { useAuth } from '../../auth/useAuth.js';
 import { apiMessage, jobsApi } from '../services/api.js';
 import { formatJobDate, formatSalary, labelFor } from '../utils/format.js';
@@ -24,10 +25,16 @@ export function JobDetailPage() {
 }
 
 export function JobApplicationPage() {
+  const { id } = useParams();
+  return <JobApplicationEditor key={id} />;
+}
+
+function JobApplicationEditor() {
   const { id } = useParams(); const { user } = useAuth(); const navigate = useNavigate(); const [job, setJob] = useState(null); const [cover, setCover] = useState(''); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  const view = useViewAuthority(id);
   useEffect(() => { let active = true; jobsApi.detail(id).then((value) => { if (active) setJob(value); }).catch((e) => { if (active) setError(apiMessage(e)); }); return () => { active = false; }; }, [id]);
   if (user?.role !== 'candidate') return <div className="container page-state"><Empty description="Candidate access is required." /><Link to="/register/candidate">Create a candidate account</Link></div>;
-  async function submit(event) { event.preventDefault(); if (busy) return; setBusy(true); setError(''); try { const application = await jobsApi.apply(id, { cover_letter: cover }); navigate(`/candidate/applications/${application.id}`, { replace: true, state: { submitted: true } }); } catch (e) { setError(apiMessage(e)); } finally { setBusy(false); } }
+  async function submit(event) { event.preventDefault(); if (!view.valid() || view.busy) return; const config = view.config; const valid = () => view.valid() && view.config === config; view.busy = true; setBusy(true); setError(''); try { const application = await jobsApi.apply(id, { cover_letter: cover }, config); if (!valid()) return; navigate(`/candidate/applications/${application.id}`, { replace: true, state: { submitted: true } }); } catch (e) { if (valid()) setError(apiMessage(e)); } finally { if (valid()) { view.busy = false; setBusy(false); } } }
   return <div className="container application-page"><Link to={`/jobs/${id}`}>← Back to job</Link><Card className="application-form-card"><p className="eyebrow">APPLICATION</p><h1>{job?.title || 'Apply for this job'}</h1>{job && <p className="company-name">{job.company?.name}</p>}{error && <Alert type="error" showIcon title={error} />}
     <form onSubmit={submit}><label htmlFor="cover-letter">Cover letter <span>(optional)</span></label><textarea id="cover-letter" maxLength={5000} rows={9} value={cover} onChange={(event) => setCover(event.target.value)} placeholder="Share a little about your interest and experience." /><p className="character-count">{cover.length}/5000</p><Button type="primary" htmlType="submit" loading={busy} disabled={!job}>Submit application</Button></form>
   </Card></div>;

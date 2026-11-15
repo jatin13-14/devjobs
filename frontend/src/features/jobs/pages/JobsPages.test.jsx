@@ -45,7 +45,7 @@ describe('candidate job discovery and applications', () => {
     const user = userEvent.setup(); await setUser(); jobsApi.detail.mockResolvedValue(job); jobsApi.apply.mockResolvedValue(application); jobsApi.application.mockResolvedValue(application);
     renderRoute('/jobs/:id/apply', <JobApplicationPage />, '/jobs/job-1/apply');
     await user.type(await screen.findByLabelText(/Cover letter/), 'I build React apps.'); await user.click(screen.getByRole('button', { name: 'Submit application' }));
-    await waitFor(() => expect(jobsApi.apply).toHaveBeenCalledWith('job-1', { cover_letter: 'I build React apps.' })); expect(await screen.findByText('APPLICATION DETAIL')).toBeInTheDocument();
+    await waitFor(() => expect(jobsApi.apply).toHaveBeenCalledWith('job-1', { cover_letter: 'I build React apps.' }, expect.objectContaining({ _assertAuthority: expect.any(Function) }))); expect(await screen.findByText('APPLICATION DETAIL')).toBeInTheDocument();
     cleanup(); jobsApi.detail.mockResolvedValue(job); jobsApi.apply.mockRejectedValueOnce({ response: { data: { job: ['You have already applied to this job.'] } } });
     renderRoute('/jobs/:id/apply', <JobApplicationPage />, '/jobs/job-1/apply'); await user.click(await screen.findByRole('button', { name: 'Submit application' })); expect(await screen.findByText('You have already applied to this job.')).toBeInTheDocument();
   });

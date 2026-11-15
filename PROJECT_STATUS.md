@@ -2410,3 +2410,38 @@ Only Stage 2B.3 source/tests/docs are eligible for staging; unrelated operations
 notes remain excluded and preserved. The exact staged export must pass all
 required gates before the single authorized local commit. Final tree and commit
 identities/results are delivered externally to preserve the tested tree.
+
+
+## Stage 2B.4 originating callback authority — 2026-11-16
+
+Baseline feat/admin-workspace-final / 4851a337a841e621320524541bfc0a85652152e1,
+tree abcd6827f2d587c5c1ea6c13b76565e4d154b424 verified. Independent baseline
+Axios regressions confirm retained A callbacks dispatch synthetic B credentials
+for candidate/recruiter profile PATCH, resume PUT/DELETE and application POST.
+No claim of a live-server exploit is made by adapter-level reproduction.
+
+A shared view capability captures canonical session ownership before callbacks
+are exposed. Profile, resume and application actions check it at initiation,
+dispatch/retry and result handling; view cleanup aborts requests and invalidates
+retained actions. Job changes remount application drafts. Existing provider,
+Web Locks, refresh, server authorization and throttling stay in place. No public
+API/schema/migration/dependency/production-settings change.
+
+82 real-Axios regressions cover account/session replacement, A/B/A, logout,
+same-account re-login, provider and page-only remount, confirmation callbacks,
+interceptor/lock queues, late responses, refresh/retry and Strict Mode. Profile
+integration now observes submission, pending mutation, list refresh and rendering
+separately in ordinary and Strict Mode. The historical F-02 Remove python failure
+is preserved; three fresh baseline full-suite runs passed, so its exact historical
+renderer schedule is not established. No timeout, sleep or assertion weakening.
+Static message-root teardown in profile/admin tests is awaited inside act after
+a full run exposed a React scheduler callback after JSDOM window disposal.
+
+See docs/STAGE_2B4_CALLBACK_AUTHORITY.md for commands, reproduction and review
+limits. Working-tree standalone: PostgreSQL 185 PASS / 8 optional Redis SKIP,
+Django/migrations and Chromium 9/9 PASS; owned cleanup reported. Exact snapshot
+full acceptance, tree/commit identities and final results are delivered externally
+to avoid changing the tested tree. One local commit is conditional on every
+required gate passing on that snapshot. Unrelated operations notes are excluded
+from staging and preserved. F-03/F-04/M-06 remain outside this repair; no Stage 2C,
+push, merge, deployment or PR modification.

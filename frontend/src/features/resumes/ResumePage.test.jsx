@@ -20,13 +20,13 @@ it('uploads, replaces, downloads and removes a resume', async () => {
   const first = new File(['synthetic'], 'first.pdf', { type: 'application/pdf' });
   fireEvent.change(container.querySelector('input[type="file"]'), { target: { files: [first] } });
   expect(await screen.findByText(/400 bytes/)).toBeInTheDocument();
-  expect(resumeApi.upload).toHaveBeenCalledWith(first);
+  expect(resumeApi.upload).toHaveBeenCalledWith(first, expect.objectContaining({ _assertAuthority: expect.any(Function) }));
   fireEvent.click(screen.getByRole('button', { name: 'Download resume' }));
   await waitFor(() => expect(resumeApi.download).toHaveBeenCalled());
   await waitFor(() => expect(screen.getByRole('button', { name: 'Replace resume' })).not.toBeDisabled());
   const second = new File(['replacement'], 'second.pdf', { type: 'application/pdf' });
   fireEvent.change(container.querySelector('input[type="file"]'), { target: { files: [second] } });
-  await waitFor(() => expect(resumeApi.upload).toHaveBeenCalledWith(second));
+  await waitFor(() => expect(resumeApi.upload).toHaveBeenCalledWith(second, expect.objectContaining({ _assertAuthority: expect.any(Function) })));
   await waitFor(() => expect(screen.getByRole('button', { name: 'Remove resume' })).not.toBeDisabled());
   fireEvent.click(screen.getByRole('button', { name: 'Remove resume' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Remove', exact: true }));

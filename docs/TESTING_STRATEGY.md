@@ -2152,3 +2152,13 @@ Final acceptance runs `/tmp/devjobs-2b3-snapshot-verify.py <export>` against a
 tests/lint/build, Ruff, changed-code format, OpenAPI, pure runner safety, standalone
 and concurrent owned PostgreSQL 17/Chromium. Exact results and tree/commit IDs
 remain external so the tested tree does not change after verification.
+
+## Stage 2B.4 callback authority acceptance
+
+See [STAGE_2B4_CALLBACK_AUTHORITY.md](STAGE_2B4_CALLBACK_AUTHORITY.md) for the
+independent baseline dispatch reproduction, 82 real-Axios lifecycle regressions,
+ordinary/Strict Mode profile integration, controlled pending mutations, awaited
+static-message teardown and exact exported-tree acceptance commands. The original
+intermittent Remove python audit failure is preserved; its precise historical
+renderer schedule is not established. No earlier working-tree pass substitutes
+for the full exact staged-snapshot gate.

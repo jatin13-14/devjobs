@@ -53,6 +53,7 @@ function assertSession(config, cause) {
     else if (sessionStore.epoch() !== config._authEpoch) throw new SessionExpiredError();
   } catch (error) { error.response = cause?.response; throw error; }
 }
+export const assertRequestOwnership = (config) => assertSession(config);
 const bodyMethods = new Set(['post', 'put', 'patch', 'postForm', 'putForm', 'patchForm']);
 const methods = new Set(['get', 'delete', 'head', 'options', ...bodyMethods]);
 // Return rejected promises even when ownership fails at synchronous initiation.
