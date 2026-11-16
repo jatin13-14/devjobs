@@ -39,6 +39,18 @@ test('candidate skills real API validation, pagination, removal and mobile keybo
   }
   await page.goto('/candidate/profile');
   await expect(page.getByRole('button', { name: 'Remove café', exact: true })).toBeVisible();
+  const preview = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname.endsWith('/candidates/me/skills/') && url.searchParams.get('pagination') === 'page' && url.searchParams.get('page_size') === '1';
+  });
+  await page.goto('/candidate');
+  const response = await preview;
+  expect(response.status()).toBe(200);
+  const skills = await response.json();
+  expect(skills.count).toBe(21);
+  expect(skills.results).toHaveLength(1);
+  await expect(page.getByRole('heading', { name: 'Find Your Next Opportunity' })).toBeVisible();
+
 });
 test('native cross-tab replacement rejects stale candidate skill submission before storage delivery', async ({ browser, request }) => {
   const authA = account('tab-a');

@@ -2524,3 +2524,17 @@ deadline. The original deadline is checked synchronously before operation entry.
 Additional tests exercise actual retry budgets, shared consumer cancellation,
 replacement/logout/provider retirement and stalled refresh interceptors.
 All exact-export acceptance gates remain required before commit.
+
+
+## Stage 2C bounded collection consumers — 2026-11-16
+
+Audited production frontend collection requests. Candidate dashboard was the last
+legacy own-skills array consumer; it now requests a one-row opt-in page for skill
+presence and three-row application/job previews. Existing completion and display
+semantics remain. Profile/skills, company discovery/membership and always-paged
+lists already use bounded responses. Legacy backend arrays remain unchanged until
+an approved retirement policy exists. M-06 external compatibility/count/offset
+costs and M-07 exhaustive recruiter aggregation remain open. See
+STAGE_2C_COLLECTION_CONSUMERS.md; exact-export acceptance is required before commit.
+No API/schema/migration/dependency/production-setting change. Unrelated operations
+notes are preserved and excluded from staging.

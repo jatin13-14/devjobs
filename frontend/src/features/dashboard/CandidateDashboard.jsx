@@ -13,7 +13,7 @@ export function CandidateDashboard() {
   const [downloadBusy, setDownloadBusy] = useState(false); const [downloadError, setDownloadError] = useState('');
   const [data, setData] = useState(null); const [error, setError] = useState(''); const [revision, setRevision] = useState(0);
   useEffect(() => { let live = true;
-    Promise.all([http.get('/candidates/me/profile/').then(({ data }) => data), resumeApi.metadata(), jobsApi.applications(), http.get('/candidates/me/skills/').then(({ data }) => data), jobsApi.list({})]).then(([profile, resume, applications, skills, jobs]) => { if (live) setData({ profile, resume, applications, skills, jobs }); }).catch((e) => { if (live) setError(apiMessage(e)); });
+    Promise.all([http.get('/candidates/me/profile/').then(({ data }) => data), resumeApi.metadata(), jobsApi.applications({ page: 1, page_size: 3 }), http.get('/candidates/me/skills/', { params: { pagination: 'page', page: 1, page_size: 1 } }).then(({ data }) => data.results), jobsApi.list({ page: 1, page_size: 3 })]).then(([profile, resume, applications, skills, jobs]) => { if (live) setData({ profile, resume, applications, skills, jobs }); }).catch((e) => { if (live) setError(apiMessage(e)); });
     return () => { live = false; };
   }, [revision]);
   if (error) return <section className="candidate-dashboard"><Alert type="error" showIcon title={error} action={<Button onClick={() => { setError(''); setRevision((v) => v + 1); }}>Retry</Button>} /></section>;
