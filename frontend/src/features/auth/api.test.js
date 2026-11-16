@@ -326,7 +326,7 @@ describe('refresh transport ownership', () => {
 });
 
 
-it('keeps a multi-page company lookup bound to its initiating session', async () => {
+it('keeps a scoped company lookup bound to its initiating session through completion', async () => {
   const dispatches = [];
   http.defaults.adapter = async (config) => {
     dispatches.push(config.headers.Authorization);

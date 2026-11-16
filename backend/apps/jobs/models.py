@@ -69,6 +69,7 @@ class Job(models.Model):
     class Meta:
         ordering = ("-published_at", "-created_at", "id")
         indexes = (
+            models.Index(fields=("-created_at", "-id"), name="jobs_cursor_created_idx"),
             models.Index(
                 fields=("status", "country", "workplace_type"), name="jobs_public_filter_idx"
             ),

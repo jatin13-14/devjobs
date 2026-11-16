@@ -63,7 +63,7 @@ class RecruiterCompaniesView(APIView):
             .select_related("company")
             .order_by("company__name", "company_id")
         )
-        if request.query_params.get("pagination") == "page":
+        if request.query_params.get("pagination") in ("page", "cursor"):
             filters = RecruiterCompanyFilters(
                 data={
                     key: request.query_params[key]

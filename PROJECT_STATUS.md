@@ -2580,3 +2580,18 @@ No existing database, volume, legacy test identity, schema, production setting,
 JWT or throttle change. Production upgrade/backup/restore and infrastructure
 release gates remain operator-owned; no deployment or release approval is implied.
 Unrelated operations notes are preserved and excluded from staging.
+
+## M-06 compatible API scalability — 2026-11-17
+
+Baseline 0f192e1 verified; dedicated feat/m06-api-scalability depends on PR #2's
+fix/stage-2b5-security head. Added opt-in signed count-free keyset traversal,
+count-free dashboard previews and exact scoped job lookup. Existing defaults,
+legacy arrays, page-number contracts, auth/session ownership and deadlines remain.
+Measured full-scan/sort behavior justified jobs.0003's created_at/id descending
+index and row-value seek. See docs/M06_API_SCALABILITY.md for audit, test commands,
+compatibility and limits. Exact-export acceptance, tested tree, commit/PR and CI
+results are recorded externally so verification does not mutate the tested tree.
+M-06 legacy retirement and intentional numbered-page counts/offsets remain open
+pending an approved compatibility/navigation policy. No M-02/M-11, deployment,
+merge, PR #1 modification or PR #2 target change. Unrelated local operations notes
+remain preserved and excluded from staging.

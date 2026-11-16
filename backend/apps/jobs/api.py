@@ -7,7 +7,6 @@ from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied as DRFPermissionDenied
 from rest_framework.generics import ListAPIView
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -17,14 +16,13 @@ from apps.candidates.models import Skill
 from apps.companies.models import Company, CompanyMembership
 from apps.companies.services import authorize_company_operation
 from apps.recruiters.models import RecruiterProfile
+from config.pagination import CollectionPagination
 
 from .models import Job
 
 
-class JobPagination(PageNumberPagination):
-    page_size = 20
-    page_size_query_param = "page_size"
-    max_page_size = 100
+class JobPagination(CollectionPagination):
+    """Preserve the existing pagination class name and shared defaults."""
 
 
 class RejectUnknownFieldsMixin:
@@ -157,6 +155,7 @@ def _public_jobs(queryset):
 
 class JobFilterSerializer(serializers.Serializer):
     company = serializers.UUIDField(required=False)
+    job_id = serializers.UUIDField(required=False)
 
 
 class JobListBase(ListAPIView):
@@ -167,6 +166,8 @@ class JobListBase(ListAPIView):
         params = self.request.query_params
         filters = JobFilterSerializer(data=params.dict())
         filters.is_valid(raise_exception=True)
+        if "job_id" in filters.validated_data:
+            queryset = queryset.filter(pk=filters.validated_data["job_id"])
         search = params.get("search")
         if search:
             queryset = queryset.filter(
@@ -189,11 +190,12 @@ class JobListBase(ListAPIView):
         skill = params.get("skill")
         if skill:
             queryset = queryset.filter(skills__name__iexact=skill.strip()).distinct()
-        return (
-            queryset.select_related("company")
-            .prefetch_related("skills")
-            .order_by("-published_at", "-created_at", "id")
+        ordering = (
+            ("-created_at", "-id")
+            if params.get("pagination") == "cursor"
+            else ("-published_at", "-created_at", "id")
         )
+        return queryset.select_related("company").prefetch_related("skills").order_by(*ordering)
 
 
 class JobCollectionView(JobListBase):
