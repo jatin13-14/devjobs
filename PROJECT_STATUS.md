@@ -2487,3 +2487,20 @@ pass; see docs/STAGE_2B5_SKILL_CONCURRENCY.md. No API shape/schema/migration/
 dependency/authentication-policy change. Exact-export gates remain required
 before commit; final identities/results are external. Unrelated notes preserved.
 Hosted frontend profile-test timeouts are a separate reliability follow-up.
+
+
+## F-02 hosted profile test reliability — 2026-11-16
+
+Hosted F-03/F-04 frontend jobs exposed five-second candidate profile integration
+test timeouts despite local acceptance passing; hosted F-03 Chromium passed.
+A disposable instrumented baseline reproduced timeout under concurrent load.
+Role queries scope to the profile form, skills card and confirmation popup.
+A later loaded run still timed out, so save and skill lifecycle are split into
+focused full-page scenarios in both ordinary and Strict Mode. All assertions,
+controlled mutation/refresh observations and Strict Mode coverage remain. No
+timeout increase, sleeps, skips or production behavior changes. A further loaded
+run exposed resource contention in the F-04 UI test; Vitest now has a two-worker
+DOM budget, retaining parallel files and explicit request/browser concurrency.
+See docs/STAGE_2B5_TEST_RELIABILITY.md for evidence and attribution limits.
+Exact-export local acceptance is required before commit; hosted CI resolution
+requires a subsequently observed successful run. Unrelated notes preserved.
