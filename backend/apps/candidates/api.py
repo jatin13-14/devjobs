@@ -1,4 +1,3 @@
-from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers, status
 from rest_framework.permissions import BasePermission, IsAuthenticated
@@ -7,6 +6,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import User
 from apps.candidates.models import CandidateProfile, CandidateSkill, Skill
+from apps.candidates.services import add_candidate_skill
 from config.collection_pagination import collection_response
 
 
@@ -96,15 +96,11 @@ class CandidateSkillsView(APIView):
         serializer.is_valid(raise_exception=True)
         profile = self.get_profile(request)
         name = serializer.validated_data["name"]
-        try:
-            with transaction.atomic():
-                skill, _ = Skill.objects.get_or_create(name=name)
-                relation, created = CandidateSkill.objects.get_or_create(candidate=profile, skill=skill)
-        except IntegrityError:
-            # Re-read after a concurrent insert wins the unique candidate/skill constraint.
-            skill = Skill.objects.get(name=name)
-            relation, created = CandidateSkill.objects.get_or_create(candidate=profile, skill=skill)
-        return Response(SkillSerializer(relation.skill).data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+        relation, created = add_candidate_skill(candidate=profile, name=name)
+        return Response(
+            SkillSerializer(relation.skill).data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
 
 
 class CandidateSkillDetailView(APIView):

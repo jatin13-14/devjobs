@@ -2473,3 +2473,17 @@ external-revocation guarantee. See docs/STAGE_2B5_PERMISSION_INVALIDATION.md.
 No backend/public API/schema/dependency/authentication-policy change. Exact export
 acceptance remains mandatory before commit; results and identities are external.
 F-12 and later milestones remain pending; unrelated operations notes preserved.
+
+
+## Stage 2B.5 F-12 concurrent skill creation — 2026-11-16
+
+Synchronized disposable PostgreSQL 17 API regressions reproduced HTTP 500 when
+a canonical skill winner commits between another request's lookup and model
+validation. Both same/different candidates and ASCII/Unicode cases fail baseline.
+The transactional candidate service recovers only the exact committed winner
+from a name uniqueness validation error, preserves all constraints and rolls
+back unexpected association failures. Seven focused concurrency/service tests
+pass; see docs/STAGE_2B5_SKILL_CONCURRENCY.md. No API shape/schema/migration/
+dependency/authentication-policy change. Exact-export gates remain required
+before commit; final identities/results are external. Unrelated notes preserved.
+Hosted frontend profile-test timeouts are a separate reliability follow-up.
