@@ -2566,3 +2566,17 @@ No existing public contract, auth policy, schema, dependency or production setti
 changes. Exact-export acceptance is required before commit; results/identities
 remain external. M-06 compatibility retirement and operational release gates
 remain open. Unrelated operations notes are preserved and excluded from staging.
+
+
+## Patched disposable PostgreSQL baseline — 2026-11-16
+
+Reviewed upstream PostgreSQL 17.12 security release (2026-11-12) and official
+Bookworm multi-platform manifest. The owned runner now pins its full digest and
+SQL identity checks reject PostgreSQL 17 below 17.12 as well as other majors.
+Version-floor regressions retain all existing database/cluster/port/ownership
+checks. See POSTGRESQL_RUNNER_SECURITY.md and E2E_ISOLATION.md. Exact-export
+acceptance on fresh PostgreSQL 17.12 clusters is mandatory before commit.
+No existing database, volume, legacy test identity, schema, production setting,
+JWT or throttle change. Production upgrade/backup/restore and infrastructure
+release gates remain operator-owned; no deployment or release approval is implied.
+Unrelated operations notes are preserved and excluded from staging.

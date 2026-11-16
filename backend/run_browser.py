@@ -68,7 +68,10 @@ def main(*, backend_only=False):
                     "POSTGRES_USER=e2e_owner",
                     "--env",
                     "POSTGRES_DB=devjobs_e2e_disposable",
-                    "postgres:17.5",
+                    (
+                        "postgres:17.12-bookworm@"
+                        "sha256:40865bc877a289da75963d97d72b59633f639fc5af7a4e856bfa3714cae5b536"
+                    ),
                     env=environment,
                 )
             with uninterrupted():
@@ -143,9 +146,10 @@ def main(*, backend_only=False):
 
             from config.e2e_safety import verify_connection
 
-            verify_connection(connection, os.environ)
+            server_version = verify_connection(connection, os.environ)
             print(
                 f"Verified owned container={container[:12]} run={run} "
+                f"server_version_num={server_version} "
                 f"cluster={identifier} database=devjobs_e2e_disposable "
                 f"host=127.0.0.1:{binding['HostPort']} PostgreSQL=17",
                 flush=True,

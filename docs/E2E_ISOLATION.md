@@ -638,3 +638,13 @@ Existing uncommitted browser CI/E2E settings/guard work remains available alongs
 these changes; `docs/LOCAL_DEVELOPMENT.md` was preserved without task edits.
 Final working tree: 11 modified tracked / 5 untracked paths, empty index;
 branch `feat/admin-workspace-final`, HEAD `ca9a7c3b081c3dcdbc342a3350bfb4d8aced0f21`.
+
+## Current disposable PostgreSQL security baseline — 2026-11-16
+
+The owned runner now selects digest-pinned PostgreSQL 17.12 Bookworm and rejects
+server versions below 17.12 before writes, while retaining the PostgreSQL 17 major
+version boundary and all identity/cleanup checks. Earlier 17.5 runtime records
+above are historical compatibility evidence. See POSTGRESQL_RUNNER_SECURITY.md
+for the exact digest, upstream release notes, focused version regressions and
+remaining deployment gates. Existing development databases and their separate
+legacy test policy are not changed or used by these acceptance runs.

@@ -38,5 +38,6 @@ def verify_connection(connection, env):
         "devjobs_e2e_disposable",
         5432,
         env["E2E_SYSTEM_IDENTIFIER"],
-    ) or not 170000 <= version < 180000:
+    ) or not 170012 <= version < 180000:
         raise ImproperlyConfigured("Disposable PostgreSQL identity mismatch; refusing writes")
+    return version
