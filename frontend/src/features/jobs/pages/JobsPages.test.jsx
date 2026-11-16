@@ -52,7 +52,7 @@ describe('candidate job discovery and applications', () => {
   it('lists application status and withdraws then refreshes', async () => {
     const user = userEvent.setup(); await setUser(); jobsApi.applications.mockResolvedValue({ results: [application] }); jobsApi.withdraw.mockResolvedValue({ ...application, status: 'WITHDRAWN' });
     renderRoute('/candidate/applications', <ApplicationsPage />); expect(await screen.findByText('Submitted')).toBeInTheDocument(); await user.click(screen.getAllByRole('button', { name: 'Withdraw', exact: true })[0]); await user.click((await screen.findAllByRole('button', { name: 'Withdraw', exact: true })).at(-1));
-    await waitFor(() => expect(jobsApi.withdraw).toHaveBeenCalledWith('app-1')); expect(jobsApi.applications).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(jobsApi.withdraw).toHaveBeenCalledWith('app-1', expect.objectContaining({ _assertAuthority: expect.any(Function) }))); expect(jobsApi.applications).toHaveBeenCalledTimes(2);
   });
   it('shows application details and only offers withdrawal for active statuses', async () => {
     await setUser(); jobsApi.application.mockResolvedValue(application); renderRoute('/candidate/applications/:applicationId', <ApplicationDetailPage />, '/candidate/applications/app-1');

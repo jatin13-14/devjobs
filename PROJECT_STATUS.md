@@ -2445,3 +2445,17 @@ to avoid changing the tested tree. One local commit is conditional on every
 required gate passing on that snapshot. Unrelated operations notes are excluded
 from staging and preserved. F-03/F-04/M-06 remain outside this repair; no Stage 2C,
 push, merge, deployment or PR modification.
+
+
+## Stage 2B.5 F-03 response ownership — 2026-11-16
+
+Verified requested baseline branch/HEAD/tree. Controlled frozen-baseline route
+regression reproduced application A overwriting B after B completed. Candidate
+application list/detail now use view/session and per-request ownership, cancellation
+and guarded completion/error/loading updates. Withdrawal callbacks retain their
+originating authority; current success triggers an owned refresh. Detail errors
+provide Retry. See docs/STAGE_2B5_RESPONSE_ORDERING.md for regression coverage,
+commands and limitations. No API/schema/dependency/authentication-policy change.
+Final exact-export acceptance identities/results belong in the external delivery
+manifest; commit is conditional on passing all gates. Unrelated operations notes
+remain excluded. F-04/F-12 and subsequent milestones are pending.
