@@ -8,7 +8,7 @@ export const jobsApi = {
   application: (id, config) => http.get(`/candidates/me/applications/${id}/`, config).then(({ data }) => data),
   withdraw: (id, config) => http.patch(`/candidates/me/applications/${id}/`, {}, config).then(({ data }) => data),
   recruiterProfile: () => http.get('/recruiters/me/profile/').then(({ data }) => data),
-  recruiterCompanies: ({ page = 1, pageSize = 20, search, companyId, signal } = {}) => http.get('/recruiters/me/companies/', { params: { pagination: 'page', page, page_size: pageSize, search, company_id: companyId }, signal }).then(({ data }) => data),
+  recruiterCompanies: ({ page = 1, pageSize = 20, search, companyId, signal, ownership } = {}) => http.get('/recruiters/me/companies/', { ...ownership, params: { pagination: 'page', page, page_size: pageSize, search, company_id: companyId }, signal }).then(({ data }) => data),
   company: (id) => http.get(`/companies/${id}/`).then(({ data }) => data),
   companyJobs: (id, params, ownership) => http.get(`/companies/${id}/jobs/`, { ...ownership, params }).then(({ data }) => data),
   companyJob: async (companyId, jobId) => {
@@ -22,13 +22,13 @@ export const jobsApi = {
       page += 1;
     }
   },
-  createJob: (payload) => http.post('/jobs/', payload).then(({ data }) => data),
-  updateJob: (id, payload) => http.patch(`/jobs/${id}/`, payload).then(({ data }) => data),
-  publishJob: (id) => http.post(`/jobs/${id}/publish/`).then(({ data }) => data),
-  closeJob: (id) => http.post(`/jobs/${id}/close/`).then(({ data }) => data),
-  recruiterApplications: (jobId, page) => http.get(`/jobs/${jobId}/applications/`, { params: { page } }).then(({ data }) => data),
-  recruiterApplication: (jobId, applicationId) => http.get(`/jobs/${jobId}/applications/${applicationId}/`).then(({ data }) => data),
-  updateApplicationStatus: (jobId, applicationId, status) => http.patch(`/jobs/${jobId}/applications/${applicationId}/status/`, { status }).then(({ data }) => data),
+  createJob: (payload, config) => http.post('/jobs/', payload, config).then(({ data }) => data),
+  updateJob: (id, payload, config) => http.patch(`/jobs/${id}/`, payload, config).then(({ data }) => data),
+  publishJob: (id, config) => http.post(`/jobs/${id}/publish/`, {}, config).then(({ data }) => data),
+  closeJob: (id, config) => http.post(`/jobs/${id}/close/`, {}, config).then(({ data }) => data),
+  recruiterApplications: (jobId, page, config) => http.get(`/jobs/${jobId}/applications/`, { ...config, params: { page } }).then(({ data }) => data),
+  recruiterApplication: (jobId, applicationId, config) => http.get(`/jobs/${jobId}/applications/${applicationId}/`, config).then(({ data }) => data),
+  updateApplicationStatus: (jobId, applicationId, status, config) => http.patch(`/jobs/${jobId}/applications/${applicationId}/status/`, { status }, config).then(({ data }) => data),
 };
 
 export function apiMessage(error) {

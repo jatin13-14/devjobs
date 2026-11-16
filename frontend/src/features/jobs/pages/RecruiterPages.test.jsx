@@ -285,3 +285,19 @@ describe('identity-owned recruiter job data', () => {
     absent(); await act(async () => lookup.resolve(membership(null))); absent();
   });
 });
+
+it('revokes job management on a known 403 and revalidates membership', async () => {
+  vi.resetAllMocks();
+  await writeAuth({ access: 'test-access', refresh: 'test-refresh', user: { id: 'A', role: 'recruiter' } });
+  jobsApi.recruiterCompanies.mockResolvedValueOnce(membership('OWNER')).mockResolvedValue(membership('MEMBER'));
+  jobsApi.companyJob.mockResolvedValue(draft());
+  jobsApi.publishJob.mockRejectedValue({ response: { status: 403, data: { detail: 'Management denied' } } });
+  render(<AuthProvider><MemoryRouter initialEntries={['/recruiter/jobs/job-1?company=company-1']}><Routes><Route path="/recruiter/jobs/:id" element={<RecruiterJobDetailPage />} /></Routes></MemoryRouter></AuthProvider>);
+  fireEvent.click(await screen.findByRole('button', { name: 'Publish' }));
+  await waitFor(() => expect(screen.getAllByRole('button', { name: /^(Yes|OK)$/ })).toHaveLength(1));
+  fireEvent.click(screen.getByRole('button', { name: /^(Yes|OK)$/ }));
+  await waitFor(() => expect(jobsApi.recruiterCompanies).toHaveBeenCalledTimes(2));
+  await screen.findByRole('heading', { name: 'Private draft' });
+  expect(screen.queryByRole('button', { name: 'Publish' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+});

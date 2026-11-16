@@ -2459,3 +2459,17 @@ commands and limitations. No API/schema/dependency/authentication-policy change.
 Final exact-export acceptance identities/results belong in the external delivery
 manifest; commit is conditional on passing all gates. Unrelated operations notes
 remain excluded. F-04/F-12 and subsequent milestones are pending.
+
+
+## Stage 2B.5 F-04 permission invalidation — 2026-11-16
+
+Baseline publish-denial regression confirms stale controls and missing membership
+revalidation. Membership resolution now owns an invalidatable view/session permit;
+known 403 retires it synchronously, revalidates server membership, clears dependent
+management screens and rejects retained/queued operations. Visible workspaces
+refresh every 60 seconds; focus/visibility return checks after five seconds of
+freshness. Repeated denials are bounded to prevent revalidation loops. No instant
+external-revocation guarantee. See docs/STAGE_2B5_PERMISSION_INVALIDATION.md.
+No backend/public API/schema/dependency/authentication-policy change. Exact export
+acceptance remains mandatory before commit; results and identities are external.
+F-12 and later milestones remain pending; unrelated operations notes preserved.
