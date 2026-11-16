@@ -452,3 +452,17 @@ expansion beyond the model maximum returns HTTP 400 with a `name` field error,
 without creating a Skill or association. No truncation or normalization-policy
 change. The profile and skills screens use the same paginated own-skills UI,
 add by name and confirmed association removal. No new endpoints are introduced.
+
+## M-07 recruiter dashboard application overview
+
+GET `/companies/{company_id}/application-overview/?time_zone=Asia/Kolkata` is an
+additive, read-only, ACTIVE OWNER/ADMIN operation using the existing company
+permission service. UTC is the default; invalid/empty/overlong IANA zones return
+400 after authorization. MEMBER/outsider/candidate/platform-admin and suspended
+or inactive identities are denied. Response: `time_zone`, `total`, `submitted`,
+`reviewing`, exactly seven local-day `{date,count}` records and at most three
+`recent` application records. Recent fields are id/applied_at, job id/title and
+candidate full_name/professional_headline; no full applicant payload is returned.
+All statuses count toward total/day activity. Ordering is applied_at DESC/id ASC.
+Counts/recent rows can drift under concurrent writes; no snapshot guarantee.
+See M07_RECRUITER_OVERVIEW.md and OpenAPI. No existing contract is retired.

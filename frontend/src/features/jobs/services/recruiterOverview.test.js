@@ -1,44 +1,26 @@
-import { describe, expect, it, vi } from 'vitest';
-import { jobsApi } from './api.js';
-import { loadCompanyApplications, summarizeApplications } from './recruiterOverview.js';
-vi.mock('./api.js', () => ({ jobsApi: { recruiterApplications: vi.fn() } }));
-describe('recruiter overview data', () => {
-  it('traverses every job and applicant page and orders recent applicants', async () => {
-    jobsApi.recruiterApplications.mockImplementation((id, page) => Promise.resolve({ results: [{ id: `${id}-${page}`, applied_at: `2026-11-0${page}T10:00:00Z` }], next: id === 'j1' && page === 1 ? 'next' : null }));
-    const rows = await loadCompanyApplications([{ id: 'j1' }, { id: 'j2' }]);
-    expect(rows.map((a) => a.id)).toEqual(['j1-2', 'j1-1', 'j2-1']);
-    expect(jobsApi.recruiterApplications).toHaveBeenCalledWith('j1', 2);
-  });
-  it('counts statuses separately from daily submission activity including terminal applications', () => {
-    const now = new Date(2026, 10, 8, 12);
-    const applied_at = new Date(2026, 10, 8, 9).toISOString();
-    const data = summarizeApplications([{ status: 'SUBMITTED', applied_at }, { status: 'WITHDRAWN', applied_at }, { status: 'REVIEWING', applied_at: new Date(2026, 9, 1).toISOString() }], now);
-    expect(data.total).toBe(3); expect(data.submitted).toBe(1); expect(data.reviewing).toBe(1);
-    expect(data.days.map((d) => d.count)).toEqual([0, 0, 0, 0, 0, 0, 2]);
-  });
-  it('preserves zero values for a real empty response', () => {
-    expect(summarizeApplications([]).total).toBe(0);
-  });
+import { expect, it } from 'vitest';
+import { parseApplicationOverview } from './recruiterOverview.js';
+
+it('preserves server totals, terminal activity, recent order and real zero values', () => {
+  const recent = [{ id: 'newer' }, { id: 'older' }];
+  const result = parseApplicationOverview({ total: 25, submitted: 0, reviewing: 3, days: [{ date: '2026-11-08', count: 2 }], recent });
+  expect(result.total).toBe(25);
+  expect(result.submitted).toBe(0);
+  expect(result.reviewing).toBe(3);
+  expect(result.days[0].count).toBe(2);
+  expect(result.recent).toBe(recent);
 });
 
-it('uses local midnight boundaries across month changes and excludes future activity', () => {
-  const now = new Date(2026, 2, 2, 12);
-  const row = (date) => ({ status: 'SUBMITTED', applied_at: date.toISOString() });
-  const summary = summarizeApplications([
-    row(new Date(2026, 1, 23, 23, 59, 59)),
-    row(new Date(2026, 1, 24)),
-    row(new Date(2026, 2, 1, 23, 59, 59)),
-    row(new Date(2026, 2, 2)),
-    row(new Date(2026, 2, 3)),
-  ], now);
-  expect(summary.days.map((day) => day.count)).toEqual([1, 0, 0, 0, 0, 1, 1]);
-  expect(summary.days.map((day) => day.date.getHours())).toEqual(Array(7).fill(0));
-  expect(summary.total).toBe(5);
+it('renders local calendar labels across month and DST boundaries without UTC parsing', () => {
+  const dates = ['2026-02-28', '2026-03-01', '2026-03-08', '2026-11-01'];
+  const result = parseApplicationOverview({ total: 0, submitted: 0, reviewing: 0, recent: [], days: dates.map((date) => ({ date, count: 0 })) });
+  expect(result.days.map(({ date }) => [date.getFullYear(), date.getMonth() + 1, date.getDate(), date.getHours()])).toEqual([
+    [2026, 2, 28, 0], [2026, 3, 1, 0], [2026, 3, 8, 0], [2026, 11, 1, 0],
+  ]);
+  expect(result.total).toBe(0);
+  expect(result.days.map(({ count }) => count)).toEqual([0, 0, 0, 0]);
 });
 
-it('rejects partial activity when a later API page fails', async () => {
-  jobsApi.recruiterApplications.mockImplementation((_id, page) => page === 1
-    ? Promise.resolve({ results: [{ id: 'a1', applied_at: '2026-11-08T00:00:00Z' }], next: 'next' })
-    : Promise.reject(new Error('Unavailable')));
-  await expect(loadCompanyApplications([{ id: 'j1' }])).rejects.toThrow('Unavailable');
+it('rejects malformed activity instead of displaying partial statistics', () => {
+  expect(() => parseApplicationOverview({ total: 999 })).toThrow();
 });

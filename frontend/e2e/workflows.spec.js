@@ -263,6 +263,18 @@ test('candidate, recruiter and administrator workflow with private access enforc
   await recruiter.getByRole('combobox', { name: /Update status for/ }).click();
   await recruiter.getByText('REVIEWING', { exact: true }).last().click();
   await expect(recruiter.locator('.ant-tag').filter({ hasText: /^REVIEWING$/ })).toBeVisible();
+  const overviewRequests = [];
+  const recordOverview = (request) => { if (new URL(request.url()).pathname.match(/\/jobs\/[^/]+\/applications\/$/)) overviewRequests.push(request.url()); };
+  recruiter.on('request', recordOverview);
+  const overviewResponse = recruiter.waitForResponse((response) => response.url().includes(`/companies/${companyId}/application-overview/`));
+  await recruiter.goto(`/recruiter?company=${companyId}`);
+  expect((await overviewResponse).status()).toBe(200);
+  await expect(recruiter.locator('.recruiter-metric').filter({ hasText: 'Total Applicants' }).locator('strong')).toHaveText('1');
+  await expect(recruiter.locator('.recruiter-metric').filter({ hasText: 'In Review' }).locator('strong')).toHaveText('1');
+  await expect(recruiter.locator('.recruiter-recent-row')).toHaveCount(1);
+  expect(overviewRequests).toEqual([]);
+  recruiter.off('request', recordOverview);
+
   await candidate.getByRole('button', { name: 'Withdraw', exact: true }).click();
   await candidate.getByRole('button', { name: 'Withdraw', exact: true }).last().click();
   await expect(candidate.getByText('Withdrawn', { exact: true })).toBeVisible();

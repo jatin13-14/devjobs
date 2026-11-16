@@ -2550,3 +2550,19 @@ service and returning before browser fixtures/services. Full browser mode stays
 intact. See docs/CI_ISOLATION_HARDENING.md. Exact-export acceptance and a live
 backend-only run are required before commit. Unrelated operations notes remain
 preserved. No API/schema/dependency/deployment/production-throttling change.
+
+
+## M-07 bounded recruiter overview — 2026-11-16
+
+Replaced exhaustive dashboard job/applicant traversal with a one-row published
+job page/count and an additive, read-only company application summary. Existing
+OWNER/ADMIN authorization gates the summary; MEMBER never requests it. SQL
+aggregates totals/seven local calendar-day counts and materializes only three
+recent applicant records with minimal fields. Seven PostgreSQL tests pass,
+including six queries at 1/20/50 rows, permissions/revocation, scoping and DST.
+Frontend ownership/error/replacement tests and real-browser totals/no-traversal
+checks are added. See M07_RECRUITER_OVERVIEW.md, API_CONVENTIONS.md and OpenAPI.
+No existing public contract, auth policy, schema, dependency or production setting
+changes. Exact-export acceptance is required before commit; results/identities
+remain external. M-06 compatibility retirement and operational release gates
+remain open. Unrelated operations notes are preserved and excluded from staging.

@@ -26,3 +26,11 @@ it('requests only approved company parameters on the configured API path and ret
   expect(await jobsApi.recruiterCompanies({ page: 2, pageSize: 10, search: 'labs', companyId: 'synthetic', signal, next: data.next })).toBe(data);
   expect(http.get).toHaveBeenCalledWith('/recruiters/me/companies/', { params: { pagination: 'page', page: 2, page_size: 10, search: 'labs', company_id: 'synthetic' }, signal });
 });
+
+it('uses the fixed company overview endpoint with captured authority and local time zone', async () => {
+  const ownership = { _assertAuthority: vi.fn(), signal: new AbortController().signal };
+  const data = { total: 101, days: [], recent: [] };
+  http.get.mockResolvedValue({ data });
+  expect(await jobsApi.companyApplicationOverview('company', 'Asia/Kolkata', ownership)).toBe(data);
+  expect(http.get).toHaveBeenCalledWith('/companies/company/application-overview/', { ...ownership, params: { time_zone: 'Asia/Kolkata' } });
+});

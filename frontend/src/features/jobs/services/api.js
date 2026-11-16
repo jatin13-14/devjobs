@@ -9,6 +9,7 @@ export const jobsApi = {
   withdraw: (id, config) => http.patch(`/candidates/me/applications/${id}/`, {}, config).then(({ data }) => data),
   recruiterProfile: () => http.get('/recruiters/me/profile/').then(({ data }) => data),
   recruiterCompanies: ({ page = 1, pageSize = 20, search, companyId, signal, ownership } = {}) => http.get('/recruiters/me/companies/', { ...ownership, params: { pagination: 'page', page, page_size: pageSize, search, company_id: companyId }, signal }).then(({ data }) => data),
+  companyApplicationOverview: (id, timeZone, config) => http.get(`/companies/${id}/application-overview/`, { ...config, params: { time_zone: timeZone } }).then(({ data }) => data),
   company: (id) => http.get(`/companies/${id}/`).then(({ data }) => data),
   companyJobs: (id, params, ownership) => http.get(`/companies/${id}/jobs/`, { ...ownership, params }).then(({ data }) => data),
   companyJob: async (companyId, jobId) => {
