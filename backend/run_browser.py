@@ -1,5 +1,6 @@
 """Own a fresh container, verify cluster identity, run E2E, then remove only it."""
 
+import argparse
 import json
 import os
 import secrets
@@ -25,7 +26,7 @@ def stop_run(signum, frame):
     raise SystemExit(128 + signum)
 
 
-def main():
+def main(*, backend_only=False):
     signal.signal(signal.SIGTERM, stop_run)
     signal.signal(signal.SIGINT, stop_run)
     if not shutil.which("docker"):
@@ -166,6 +167,9 @@ def main():
                 [sys.executable, "-m", "pytest", "--ds=config.settings.e2e"],
             ):
                 checked(command)
+            if backend_only:
+                print("Backend-only owned PostgreSQL verification PASS", flush=True)
+                return 0
             from apps.accounts.models import User
 
             email = f"e2e-admin-{run}@example.test"
@@ -262,4 +266,10 @@ def main():
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--backend-only",
+        action="store_true",
+        help="Verify owned PostgreSQL without browser fixtures or services",
+    )
+    raise SystemExit(main(backend_only=parser.parse_args().backend_only))

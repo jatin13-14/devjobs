@@ -2538,3 +2538,15 @@ costs and M-07 exhaustive recruiter aggregation remain open. See
 STAGE_2C_COLLECTION_CONSUMERS.md; exact-export acceptance is required before commit.
 No API/schema/migration/dependency/production-setting change. Unrelated operations
 notes are preserved and excluded from staging.
+
+
+## CI isolation and action integrity — 2026-11-16
+
+Recovered and reviewed the existing unstaged workflow/runner hardening. Action
+pins match upstream tags, checkout no longer persists credentials, contents are
+read-only and job lifetimes are bounded. Backend CI delegates to the existing
+owned PostgreSQL runner's backend-only mode, replacing the fixed devjobs_test
+service and returning before browser fixtures/services. Full browser mode stays
+intact. See docs/CI_ISOLATION_HARDENING.md. Exact-export acceptance and a live
+backend-only run are required before commit. Unrelated operations notes remain
+preserved. No API/schema/dependency/deployment/production-throttling change.
