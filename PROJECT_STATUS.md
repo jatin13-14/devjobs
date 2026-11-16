@@ -2504,3 +2504,23 @@ DOM budget, retaining parallel files and explicit request/browser concurrency.
 See docs/STAGE_2B5_TEST_RELIABILITY.md for evidence and attribution limits.
 Exact-export local acceptance is required before commit; hosted CI resolution
 requires a subsequently observed successful run. Unrelated notes preserved.
+
+
+## M-09 request and refresh deadlines — 2026-11-16
+
+Axios defaults previously allowed indefinite waits. Requests now default to 30s,
+shared refresh to 10s and failure-expiry coordination to 5s, including interceptor
+and lock queues. Retry retains the original deadline. Canceled queue callbacks
+cannot dispatch or commit credentials; shared refresh cleanup permits recovery.
+Timeout does not automatically replay mutations or establish server outcome.
+Existing epoch/permit/revision checks and JWT policy remain. Twenty regressions
+and a native Chromium lock-queue scenario are added; see
+docs/STAGE_2B5_REQUEST_DEADLINES.md. No public API/schema/dependency/backend
+or production settings change. Exact-export acceptance is mandatory before
+commit; final results and identities are external. Unrelated notes preserved.
+
+M-09 recovery review reproduced and repaired dispatch at an already exhausted
+deadline. The original deadline is checked synchronously before operation entry.
+Additional tests exercise actual retry budgets, shared consumer cancellation,
+replacement/logout/provider retirement and stalled refresh interceptors.
+All exact-export acceptance gates remain required before commit.
