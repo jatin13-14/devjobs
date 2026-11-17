@@ -1,5 +1,6 @@
+import { RenderBoundary } from './RenderBoundary.jsx';
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Link, Route, Routes, useLocation } from 'react-router-dom';
 import { PublicLayout } from '../components/templates/PublicLayout.jsx';
 import { AuthProvider } from '../features/auth/AuthContext.jsx';
 import { RouteGuard } from '../features/auth/RouteGuard.jsx';
@@ -31,9 +32,10 @@ function PageLoading() {
   return <main className="page-loading" role="status" aria-live="polite"><span className="page-loading__indicator" aria-hidden="true" />Loading page…</main>;
 }
 
-export default function App() {
+function RouteContent() {
+  const location = useLocation();
   return (
-    <AuthProvider><BrowserRouter>
+    <RenderBoundary key={location.key}>
       <Suspense fallback={<PageLoading />}><Routes>
         <Route element={<PublicLayout />}>
           <Route element={<RouteGuard platformAdmin />}><Route path="/admin" element={<AdminPage />} /></Route>
@@ -67,8 +69,12 @@ export default function App() {
             <Route path="/recruiter/jobs/:id/applicants/:applicationId" element={<RecruiterApplicantDetailPage />} />
           </Route>
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<main className="container page-state"><h1>Page not found</h1><p>The requested page is unavailable. Check the address or browse current jobs.</p><Link to="/">Browse jobs</Link></main>} />
       </Routes></Suspense>
-    </BrowserRouter></AuthProvider>
+    </RenderBoundary>
   );
+}
+
+export default function App() {
+  return <AuthProvider><BrowserRouter><RouteContent /></BrowserRouter></AuthProvider>;
 }

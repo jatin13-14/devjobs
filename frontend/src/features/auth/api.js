@@ -1,3 +1,4 @@
+import { validateReadResponse } from './validateResponse.js';
 import axios from 'axios';
 import { REFRESH_TIMEOUT, REQUEST_TIMEOUT, withRequestDeadline } from './requestDeadline.js';
 import { createSessionStore, SessionExpiredError } from './sessionStore.js';
@@ -94,7 +95,7 @@ client.interceptors.request.use((config) => {
 });
 client.interceptors.response.use((response) => {
   assertSession(response.config);
-  return response;
+  return validateReadResponse(response);
 }, async (error) => {
   const request = error.config;
   if (!request) throw error;

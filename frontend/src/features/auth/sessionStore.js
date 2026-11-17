@@ -90,7 +90,23 @@ export function createSessionStore({ storage, locks, events, randomUUID }) {
     },
     async beginLogin(validate = () => {}) {
       validate();
-      const expected = epoch();
+      let expected;
+      try { expected = epoch(); }
+      catch (error) {
+        if (!(error instanceof SessionExpiredError)) throw error;
+        const invalid = storage.getItem(sessionStorageKey);
+        let parsed;
+        try { parsed = JSON.parse(invalid); } catch { /* The captured bytes are corrupt. */ }
+        if (invalid === null || validRecord(parsed)) throw new SessionExpiredError();
+        // Explicit sign-in may repair a corrupt record, under the same lock.
+        // Recheck the exact bytes so queued recovery cannot erase a peer login.
+        await coordinated(() => {
+          validate();
+          if (storage.getItem(sessionStorageKey) !== invalid) throw new SessionExpiredError();
+          replace(null, null);
+        });
+        expected = epoch();
+      }
       const attempt = { epoch: null, id: randomUUID(), live: true, validate };
       attempts.add(attempt);
       await coordinated(() => {

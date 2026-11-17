@@ -189,7 +189,7 @@ it('lets another consumer finish a shared refresh after one consumer cancels', a
   const refreshes = vi.fn((config) => new Promise((resolve) => { release = () => resolve({ config, status: 200, headers: {}, data: { access: 'new-access' } }); }));
   plainHttp.defaults.adapter = refreshes;
   http.defaults.adapter = async (config) => {
-    if (config.headers.Authorization === 'Bearer new-access') return { config, status: 200, headers: {}, data: 'current' };
+    if (config.headers.Authorization === 'Bearer new-access') return { config, status: 200, headers: {}, data: { value: 'current' } };
     throw new axios.AxiosError('expired', 'ERR_BAD_REQUEST', config, null, { status: 401, config });
   };
   const controller = new AbortController();
@@ -199,7 +199,7 @@ it('lets another consumer finish a shared refresh after one consumer cancels', a
   controller.abort();
   expect(await first).toMatchObject({ code: 'ERR_CANCELED' });
   release(); await vi.advanceTimersByTimeAsync(0);
-  expect((await second).data).toBe('current');
+  expect((await second).data).toEqual({ value: 'current' });
   expect(refreshes).toHaveBeenCalledTimes(1);
   expect(readAuth().access).toBe('new-access');
   expect(vi.getTimerCount()).toBe(0);

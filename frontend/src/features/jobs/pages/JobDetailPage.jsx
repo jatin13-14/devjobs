@@ -19,7 +19,7 @@ export function JobDetailPage() {
     {job.skills?.length > 0 && <section><h2>Required skills</h2><div className="job-tags">{job.skills.map((skill) => <Tag key={skill}>{skill}</Tag>)}</div></section>}
     <section className="job-description"><h2>About the role</h2><p>{job.description}</p></section>
     {user?.role === 'candidate' && <Button type="primary" size="large" onClick={apply}>Apply for this job</Button>}
-    {user?.role === 'recruiter' && <Alert type="info" message="Candidate applications are available to candidate accounts." showIcon />}
+    {user?.role === 'recruiter' && <Alert type="info" title="Candidate applications are available to candidate accounts." showIcon />}
     {!user && <Button type="primary" size="large" onClick={apply}>Log in to apply</Button>}
   </Card></article>;
 }
