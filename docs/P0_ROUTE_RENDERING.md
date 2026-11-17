@@ -124,3 +124,89 @@ behavior, not a deployed reverse proxy; the existing deployment fallback
 requirement remains. Null/root/envelope checks are intentionally structural;
 other unexpected render failures are contained by the boundary. There is no new
 backend API, schema, migration, dependency, JWT policy or production setting.
+
+## Local candidate recovery — 2026-11-17
+
+The actual development server had loaded November 9 code and ignored the newer
+skills pagination parameter. Dashboard requested cursor pagination and Profile
+requested page pagination, but both received HTTP 200 `[]`. Consumers read
+`data.results`; the resulting undefined skills value reached render-time
+`length`/collection access and triggered “This page could not be displayed”.
+The shared GET validator now rejects legacy arrays when page/cursor pagination
+was explicitly requested. Unpaged legacy arrays remain supported. Existing
+`apiMessage` handling intentionally displays “Something went wrong. Please try
+again.” with Retry / Retry skills, rather than exposing the validator exception.
+Unit regressions cover both pagination modes and valid envelopes; two permanent
+Chromium route regressions cover the observed array, retry and reload.
+
+Before restart, PID 22931 was rechecked for current-user ownership, exact
+`manage.py runserver 127.0.0.1:8000 --noreload` command, repository backend cwd
+and its loopback listener. Only this PID received SIGTERM. Replacement PID 1510
+retained the existing runtime settings, passed health HTTP 200 and owns the same
+listener. No unrelated server or database process was stopped. No backend source,
+API contract, migration, dependency or authentication-policy change was made.
+
+Focused real-local Chromium used a synthetic candidate and the actual services
+at ports 5173/8000. `/candidate` rendered recommendations, Profile Completion and
+new-candidate empty states; `/candidate/profile` rendered Save profile and enabled
+Add skill. Both passed cache-disabled CDP hard reload. Actual skills responses:
+
+- Dashboard `?pagination=cursor&page_size=1`: object with `next`, `previous`,
+  `results` array.
+- Profile `?pagination=page&page=1&page_size=20`: object with `count`, `next`,
+  `previous`, `results` array.
+
+On each route, intercepted HTTP 200 `[]` produced an alert with the existing
+Retry action, no render fallback, and recovery to intended content after removing
+the interception and clicking Retry. Zero page exceptions; one existing Ant Design
+unconnected-useForm warning during the fault scenario. Initial verification
+attempts exposed overly exact accessible-name selectors (icons contribute names)
+and an incorrect expectation of the validator's private error text; these test
+expectations were corrected without changing the product UI.
+
+Commands in this continuation:
+
+- `cd frontend && npm test -- src/features/auth/validateResponse.test.js`: PASS,
+  17 tests (the invocation also supplied the nonexistent candidate feature path;
+  only the validator file matched).
+- `cd frontend && npm test -- src/features/dashboard/CandidateDashboard.test.jsx src/features/skills/CandidateSkills.test.jsx src/features/skills/CandidateSkills.session.test.jsx`:
+  PASS, 27 tests across three files.
+- `python3 /tmp/devjobs-candidate-restart.py`: PASS, identity-checked restart.
+- `node /tmp/devjobs-candidate-verify.cjs`: final PASS; live routes, hard reload,
+  malformed success, Retry recovery. Evidence: `/tmp/devjobs-candidate-verify.log`.
+- `cd frontend && npm run lint`: PASS.
+- `cd frontend && npm run build`: PASS; existing >500 kB chunk advisory.
+- `cd frontend && npm test`: PASS, 385 tests / 32 files; existing JSDOM
+  getComputedStyle diagnostics remain.
+- `git diff --check`: PASS after documentation updates.
+- A redundant `npm run lint` from the repository root failed ENOENT (no root
+  package.json); rerunning from `frontend/` passed after the final test edits.
+
+The dedicated owned-runner route tests, production-bundle Chromium, exact-export
+acceptance and hosted CI were not rerun for this continuation. No full backend or
+database acceptance rerun was needed for unchanged backend code. These results
+verify the reported local recovery, not final release/commit acceptance. No commit,
+push, PR change, merge or deployment. M-02 design and unrelated operations notes
+remain preserved. Temporary browser scripts/logs are local evidence, not committed
+regression infrastructure. Synthetic registrations remain in the local development
+database; no existing candidate data was changed.
+
+## Candidate repair acceptance continuation
+
+Fresh owned acceptance passes development Chromium 85/85, production-bundle
+routes 75/75 and two concurrent Chromium runs 85/85 each. Both concurrent peer
+checks pass. Each runner verifies PostgreSQL 17.12, applies migrations, checks
+Django/migration consistency and passes 209 backend tests with eight optional
+Redis skips. Owned cleanup is reported for all four runs. Frontend lint, 385
+tests/32 files and build, Ruff, OpenAPI (40 paths/56 operations/negative controls),
+17 runner-safety tests and whitespace checks pass. No intermittent failure or
+additional source change was observed. Existing JSDOM, Ant Design and bundle
+advisories remain; this is not deployment acceptance.
+
+See P0_CANDIDATE_ACCEPTANCE_HANDOFF.md for the exact commands and focused staging
+boundary. All gates must pass again against the exact staged export before commit.
+Final exported/committed tree identities, counts, cleanup inventory, separate draft
+PR targeting fix/p0-route-rendering and observed hosted CI results are recorded
+externally at delivery to keep the verified tree unchanged. M-02 design and
+unrelated operations notes remain preserved and excluded. No API, schema,
+dependency, backend or authentication-policy change is included in this repair.

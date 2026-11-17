@@ -33,6 +33,27 @@ async function rendered(page, row) {
   await expect(page.getByText('Loading page…', { exact: true })).toHaveCount(0);
   await expect(page.locator('main')).not.toBeEmpty();
 }
+for (const url of ['/candidate', '/candidate/profile']) {
+  test(`legacy skills server response is recoverable: ${url}`, async ({ page }) => {
+    const errors = watch(page);
+    await install(page, 'candidate');
+    // Exact response observed from the long-running local backend: it ignored
+    // opt-in pagination and returned the still-supported legacy array contract.
+    await page.route('**/api/v1/candidates/me/skills/**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }));
+    await page.goto(url);
+    await expect(page.getByRole('alert').filter({ hasText: 'Something went wrong. Please try again.' })).toBeVisible();
+    await expect(page.getByText('This page could not be displayed', { exact: true })).toHaveCount(0);
+    await page.unroute('**/api/v1/candidates/me/skills/**');
+    await page.getByRole('button', { name: url === '/candidate' ? 'Retry' : 'Retry skills', exact: true }).click();
+    await rendered(page, rows.find((row) => row.url === url));
+    if (url.endsWith('/profile')) await expect(page.getByRole('button', { name: 'Add skill', exact: true })).toBeEnabled();
+    else await expect(page.getByRole('heading', { name: /Profile Completion/ })).toBeVisible();
+    await page.reload();
+    await rendered(page, rows.find((row) => row.url === url));
+    await expect(page.getByText('This page could not be displayed', { exact: true })).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+}
 for (const role of ['anonymous', 'candidate', 'owner', 'admin', 'member', 'outsider', 'platform']) {
   test(`route matrix: ${role} direct loads, reloads and history`, async ({ page }) => {
     test.setTimeout(180000);

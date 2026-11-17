@@ -2611,3 +2611,54 @@ export, development/production browser runs, full PostgreSQL 17.12 acceptance,
 concurrent peer isolation and hosted CI are required before delivery; final
 results and artifact identities are recorded externally. M-02 design and unrelated
 local operations notes remain preserved and excluded from the focused commit.
+
+## P0 Candidate Dashboard/Profile local recovery — 2026-11-17
+
+The November 9 Django process returned legacy HTTP 200 skills arrays despite
+explicit page/cursor requests, leaving `data.results` undefined at render time.
+Shared response validation now routes this mismatch into existing Error/Retry UI;
+valid envelopes and unpaged legacy arrays remain supported. Regression unit and
+Chromium route assertions are updated. Identity-checked restart stopped only
+current-user PID 22931 in this repository's backend on 127.0.0.1:8000; replacement
+PID 1510 passed health and now returns cursor/page skills envelopes.
+
+Actual local Dashboard and Profile PASS intended content, cache-disabled hard
+reload, injected legacy-array Error/Retry and recovery, with zero page exceptions.
+One existing Ant Design form warning remains. Focused validator 17 tests and
+candidate dashboard/skills 27 tests PASS; frontend lint/build and complete suite
+385 tests / 32 files PASS (existing chunk/JSDOM advisories). See
+`docs/P0_ROUTE_RENDERING.md` for exact commands, temporary evidence and limitations.
+Dedicated owned-runner regressions, production browser, exact-export and hosted
+CI remain unrun in this continuation; no final acceptance or commit is claimed.
+No backend/API/schema/dependency/auth-policy changes. M-02 and unrelated operations
+notes preserved; no commit, push, merge, deployment or new milestone.
+
+### P0 candidate acceptance preservation handoff — 2026-11-17
+
+Reviewed saved repair source/tests on `fix/p0-candidate-pages` at `819f8d6`;
+no unrelated source changes found. Validator rerun PASS, 17 tests; whitespace
+check PASS. Both saved browser regressions cover malformed skills responses,
+Error/Retry recovery and reload, but owned-runner execution remains pending.
+Exact commands, expected outcomes, evidence paths and snapshot/hosted gates are
+recorded in `docs/P0_CANDIDATE_ACCEPTANCE_HANDOFF.md`. Prior 385-test/lint/build
+results remain historical verified state, not reruns in this handoff. M-02 and
+operations notes preserved; no staging, commit, push, PR or full acceptance claim.
+
+### P0 candidate repair delivery gates
+
+Fresh working-tree acceptance PASS: development Chromium 85/85, production bundle
+75/75, concurrent Chromium 85/85 each and both peer-isolation checks. Each fresh
+owned PostgreSQL 17.12 cluster passes 209 backend tests with eight optional Redis
+skips, migrations and Django/migration-consistency checks; all four cleanups are
+reported. Frontend lint, 385 tests/32 files, build, Ruff, OpenAPI (40 paths/56
+operations/negative controls), 17 runner-safety tests and whitespace checks PASS.
+No intermittent test failure or further source change was observed. Sandbox
+permissions and the existing M-06 schema interpreter resolved setup-only failures.
+
+Exact-export acceptance remains the pre-commit gate. Its final results, tested
+and committed tree identities, normal branch push, separate draft PR targeting
+fix/p0-route-rendering and actual hosted CI results are recorded externally at
+delivery so verification does not mutate the tested tree. See
+docs/P0_CANDIDATE_ACCEPTANCE_HANDOFF.md. No API/schema/dependency/auth-policy
+change, M-02/M-11 work, merge or deployment. Existing M-02 and unrelated operations
+notes remain byte-preserved and are excluded through P0-only status staging.
