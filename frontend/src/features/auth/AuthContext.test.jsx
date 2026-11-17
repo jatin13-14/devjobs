@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { message } from 'antd';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { LoginPage } from './AuthPages.jsx';
@@ -418,4 +419,29 @@ it('revalidates login lifetime after an asynchronous request interceptor', async
     expect(transport).not.toHaveBeenCalled();
     expect(readAuth()).toBeNull();
   } finally { release.resolve(); http.interceptors.request.eject(interceptor); }
+});
+
+it('retires local credentials before remote logout and preserves a replacement session', async () => {
+  const pending = deferred();
+  const remote = vi.spyOn(authApi, 'logout').mockReturnValue(pending.promise);
+  await writeAuth(credentialsFor('a'));
+  render(<AuthProvider><SessionProbe /></AuthProvider>);
+  let logout;
+  await act(async () => { logout = context.logout(); });
+  expect(readAuth()).toBeNull();
+  expect(remote).toHaveBeenCalledWith('a-refresh');
+  await act(async () => { await writeAuth(credentialsFor('b')); });
+  await act(async () => { pending.resolve(); await logout; });
+  expectSession('b');
+});
+
+
+it('reports failed server revocation after clearing local credentials', async () => {
+  vi.spyOn(authApi, 'logout').mockRejectedValue(new Error('network failure'));
+  const warning = vi.spyOn(message, 'warning').mockImplementation(() => {});
+  await writeAuth(credentialsFor('a'));
+  render(<AuthProvider><SessionProbe /></AuthProvider>);
+  await act(async () => { await context.logout(); });
+  expect(readAuth()).toBeNull();
+  expect(warning).toHaveBeenCalledWith(expect.stringContaining('server logout could not be confirmed'));
 });

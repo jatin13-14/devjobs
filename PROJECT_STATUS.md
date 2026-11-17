@@ -2662,3 +2662,10 @@ delivery so verification does not mutate the tested tree. See
 docs/P0_CANDIDATE_ACCEPTANCE_HANDOFF.md. No API/schema/dependency/auth-policy
 change, M-02/M-11 work, merge or deployment. Existing M-02 and unrelated operations
 notes remain byte-preserved and are excluded through P0-only status staging.
+
+## M-02 JWT session revocation — 2026-11-18
+
+The owner approved the legacy-token cutover. PostgreSQL session revocation,
+refresh/logout serialization, frontend logout integration and regression tests
+are implemented on `feat/m02-jwt-revocation-p0`. Exact acceptance and hosted
+results are recorded externally; see `docs/M02_JWT_REVOCATION.md`.

@@ -12,7 +12,7 @@ import { RouteGuard } from './RouteGuard.jsx';
 
 vi.mock('./api.js', async (importOriginal) => {
   const actual = await importOriginal();
-  return { ...actual, authApi: { login: vi.fn(), registerCandidate: vi.fn(), registerRecruiter: vi.fn() } };
+  return { ...actual, authApi: { login: vi.fn(), logout: vi.fn(), registerCandidate: vi.fn(), registerRecruiter: vi.fn() } };
 });
 function renderAuth(page, route = '/login') {
   return render(<ConfigProvider><AuthProvider><MemoryRouter initialEntries={[route]}><Routes><Route path="/login" element={<LoginPage />} /><Route path="/register/candidate" element={<CandidateRegistrationPage />} /><Route path="/register/recruiter" element={<RecruiterRegistrationPage />} /><Route element={<RouteGuard roles={['candidate']} />}><Route path="/candidate" element={<p>Candidate area</p>} /></Route><Route element={<RouteGuard roles={['recruiter']} />}><Route path="/recruiter" element={<p>Recruiter area</p>} /></Route></Routes></MemoryRouter></AuthProvider></ConfigProvider>);
@@ -102,6 +102,7 @@ describe('authentication screens', () => {
     await user.click(screen.getByRole('button', { name: 'Log out' }));
     expect(screen.getByRole('button', { name: 'Signed out' })).toBeInTheDocument();
     expect(readAuth()).toBeNull();
+    await waitFor(() => expect(authApi.logout).toHaveBeenCalledWith('r'));
   });
 });
 

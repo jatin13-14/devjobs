@@ -143,6 +143,7 @@ client.interceptors.response.use((response) => {
   }
 });
 export const authApi = {
+  logout: (refresh) => withRequestDeadline({}, (config) => plainHttp.post('/auth/logout/', { refresh }, config), REFRESH_TIMEOUT),
   login: (values, validate) => http.post('/auth/login/', values, { _publicAuth: true, _assertAuthority: validate }).then(({ data }) => data),
   registerCandidate: (values) => http.post('/auth/candidate/register/', values, { _publicAuth: true }).then(({ data }) => data),
   registerRecruiter: (values) => http.post('/auth/recruiter/register/', values, { _publicAuth: true }).then(({ data }) => data),

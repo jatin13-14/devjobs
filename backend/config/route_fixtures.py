@@ -1,7 +1,8 @@
+from apps.accounts.sessions import issue_session
+
 """Synthetic route audit identities, only called after the owned runner's guards."""
 
 from django.utils import timezone
-from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.accounts.models import User
 from apps.applications.models import Application
@@ -31,7 +32,7 @@ def route_fixtures(run):
             if role != "platform"
             else None
         )
-        refresh = RefreshToken.for_user(user)
+        refresh = issue_session(user)
         accounts[role] = {
             "access": str(refresh.access_token),
             "refresh": str(refresh),

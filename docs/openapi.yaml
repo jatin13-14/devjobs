@@ -826,6 +826,27 @@ paths:
           description: Missing refresh token.
         '401':
           description: Invalid or expired refresh token.
+  /api/v1/auth/logout/:
+    post:
+      security: []
+      summary: Revoke the session identified by a refresh token
+      operationId: logout
+      description: Idempotent for an otherwise valid refresh token; uses the refresh rate limit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh]
+              properties:
+                refresh: { type: string }
+      responses:
+        '204': { description: Session revoked. }
+        '400': { description: Missing or malformed input. }
+        '401': { description: Invalid or expired refresh token or session. }
+        '429': { description: Per-client rate limit exceeded. }
+        '503': { description: Session storage unavailable. }
   /api/v1/companies/{company_id}/application-overview/:
     get:
       summary: Read bounded company application totals and recent applicants

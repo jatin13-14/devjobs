@@ -5,13 +5,14 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from apps.accounts.serializers import (
     CandidateRegistrationSerializer,
     EmailTokenObtainPairSerializer,
     RecruiterRegistrationSerializer,
 )
+from apps.accounts.session_views import LogoutView, SessionRefreshView
 from apps.accounts.throttles import RefreshRateThrottle, RegistrationRateThrottle
 from apps.applications.api import (
     CandidateApplicationDetailView,
@@ -48,7 +49,7 @@ class EmailTokenObtainPairView(TokenObtainPairView):
     throttle_classes = (JwtTokenRateThrottle,)
 
 
-class ThrottledTokenRefreshView(TokenRefreshView):
+class ThrottledTokenRefreshView(SessionRefreshView):
     throttle_classes = (RefreshRateThrottle,)
 
 
@@ -94,6 +95,7 @@ urlpatterns = [
     path("api/v1/auth/login/", EmailTokenObtainPairView.as_view(), name="login"),
     path("api/v1/auth/token/", EmailTokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/v1/auth/token/refresh/", ThrottledTokenRefreshView.as_view(), name="token_refresh"),
+    path("api/v1/auth/logout/", LogoutView.as_view(), name="logout"),
     path("api/v1/candidates/me/profile/", CandidateProfileView.as_view(), name="candidate-profile"),
     path("api/v1/candidates/me/skills/", CandidateSkillsView.as_view(), name="candidate-skills"),
     path(
