@@ -70,11 +70,14 @@ class UserManager(BaseUserManager):
         return self._create_user(email, password, **extra_fields)
 
 
+class AccountRole(models.TextChoices):
+    CANDIDATE = "candidate", "Candidate"
+    RECRUITER = "recruiter", "Recruiter"
+    ADMIN = "admin", "Admin"
+
+
 class User(AbstractUser):
-    class Role(models.TextChoices):
-        CANDIDATE = "candidate", "Candidate"
-        RECRUITER = "recruiter", "Recruiter"
-        ADMIN = "admin", "Admin"
+    Role = AccountRole
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     username = None
@@ -90,6 +93,10 @@ class User(AbstractUser):
         verbose_name_plural = "users"
         constraints = (
             models.CheckConstraint(
+                condition=models.Q(role__in=[choice for choice, _label in AccountRole.choices]),
+                name="accounts_user_role_supported",
+            ),
+            models.CheckConstraint(
                 condition=models.Q(email__regex=r"^[\x01-\x7F]+$"),
                 name="accounts_user_email_ascii",
             ),
@@ -104,6 +111,21 @@ class User(AbstractUser):
 
     def save(self, *args, **kwargs):
         update_fields = kwargs.get("update_fields")
+        if self.pk and not self._state.adding:
+            previous = type(self)._base_manager.using(kwargs.get("using") or self._state.db).only("role").get(pk=self.pk)
+            if previous.role != self.role:
+                incompatible = (
+                    self.role == self.Role.CANDIDATE
+                    and hasattr(self, "recruiter_profile")
+                    or self.role == self.Role.RECRUITER
+                    and hasattr(self, "candidate_profile")
+                    or self.role == self.Role.ADMIN
+                    and (hasattr(self, "candidate_profile") or hasattr(self, "recruiter_profile"))
+                )
+                if incompatible:
+                    raise ValueError("Role change conflicts with an attached candidate or recruiter profile.")
+                if update_fields is not None and "role" not in update_fields:
+                    raise ValueError("Role was modified but is not included in update_fields.")
         if update_fields is not None and "email" not in update_fields and not self._state.adding:
             try:
                 persisted_email = (

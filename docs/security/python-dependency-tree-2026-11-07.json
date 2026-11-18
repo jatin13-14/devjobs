@@ -1,0 +1,324 @@
+[
+  {
+    "name": "packaging",
+    "version": "26.3",
+    "requires_python": ">=3.9",
+    "requires_dist": []
+  },
+  {
+    "name": "sqlparse",
+    "version": "0.6.1",
+    "requires_python": ">=3.10",
+    "requires_dist": [
+      "build; extra == 'dev'",
+      "furo; extra == 'doc'",
+      "sphinx; extra == 'doc'"
+    ]
+  },
+  {
+    "name": "Pygments",
+    "version": "2.21.0",
+    "requires_python": ">=3.9",
+    "requires_dist": [
+      "colorama>=0.4.6; extra == 'windows-terminal'"
+    ]
+  },
+  {
+    "name": "pip",
+    "version": "26.3",
+    "requires_python": ">=3.10",
+    "requires_dist": []
+  },
+  {
+    "name": "redis",
+    "version": "6.4.0",
+    "requires_python": ">=3.9",
+    "requires_dist": [
+      "async-timeout>=4.0.3; python_full_version < '3.11.3'",
+      "hiredis>=3.2.0; extra == 'hiredis'",
+      "pyjwt>=2.9.0; extra == 'jwt'",
+      "cryptography>=36.0.1; extra == 'ocsp'",
+      "pyopenssl>=20.0.1; extra == 'ocsp'",
+      "requests>=2.31.0; extra == 'ocsp'"
+    ]
+  },
+  {
+    "name": "ruff",
+    "version": "0.17.3",
+    "requires_python": ">=3.7",
+    "requires_dist": []
+  },
+  {
+    "name": "PyJWT",
+    "version": "2.15.1",
+    "requires_python": ">=3.9",
+    "requires_dist": [
+      "typing_extensions>=4.0; python_version < \"3.11\"",
+      "cryptography>=3.4.0; extra == \"crypto\""
+    ]
+  },
+  {
+    "name": "Django",
+    "version": "5.2.19",
+    "requires_python": ">=3.10",
+    "requires_dist": [
+      "asgiref>=3.8.1",
+      "sqlparse>=0.3.1",
+      "tzdata; sys_platform == \"win32\"",
+      "argon2-cffi>=19.1.0; extra == \"argon2\"",
+      "bcrypt; extra == \"bcrypt\""
+    ]
+  },
+  {
+    "name": "iniconfig",
+    "version": "2.3.1",
+    "requires_python": ">=3.10",
+    "requires_dist": []
+  },
+  {
+    "name": "coverage",
+    "version": "7.17.2",
+    "requires_python": ">=3.11",
+    "requires_dist": []
+  },
+  {
+    "name": "pluggy",
+    "version": "1.7.0",
+    "requires_python": ">=3.10",
+    "requires_dist": []
+  },
+  {
+    "name": "gunicorn",
+    "version": "23.0.0",
+    "requires_python": ">=3.7",
+    "requires_dist": [
+      "packaging",
+      "importlib-metadata ; python_version < \"3.8\"",
+      "eventlet !=0.36.0,>=0.24.1 ; extra == 'eventlet'",
+      "gevent >=1.4.0 ; extra == 'gevent'",
+      "setproctitle ; extra == 'setproctitle'",
+      "gevent ; extra == 'testing'",
+      "eventlet ; extra == 'testing'",
+      "coverage ; extra == 'testing'",
+      "pytest ; extra == 'testing'",
+      "pytest-cov ; extra == 'testing'",
+      "tornado >=0.2 ; extra == 'tornado'"
+    ]
+  },
+  {
+    "name": "dj-database-url",
+    "version": "2.3.0",
+    "requires_python": null,
+    "requires_dist": [
+      "Django>=4.2",
+      "typing-extensions>=3.10.0.0"
+    ]
+  },
+  {
+    "name": "python-dotenv",
+    "version": "1.2.4",
+    "requires_python": ">=3.10",
+    "requires_dist": [
+      "click>=5.0; extra == \"cli\""
+    ]
+  },
+  {
+    "name": "djangorestframework_simplejwt",
+    "version": "5.5.1",
+    "requires_python": ">=3.9",
+    "requires_dist": [
+      "django>=4.2",
+      "djangorestframework>=3.14",
+      "pyjwt>=1.7.1",
+      "cryptography; extra == \"test\"",
+      "freezegun; extra == \"test\"",
+      "pytest-cov; extra == \"test\"",
+      "pytest-django; extra == \"test\"",
+      "pytest-xdist; extra == \"test\"",
+      "pytest; extra == \"test\"",
+      "tox; extra == \"test\"",
+      "ruff; extra == \"lint\"",
+      "yesqa; extra == \"lint\"",
+      "pyupgrade; extra == \"lint\"",
+      "pre-commit; extra == \"lint\"",
+      "Sphinx; extra == \"doc\"",
+      "sphinx_rtd_theme>=0.1.9; extra == \"doc\"",
+      "pytest-watch; extra == \"dev\"",
+      "wheel; extra == \"dev\"",
+      "twine; extra == \"dev\"",
+      "ipython; extra == \"dev\"",
+      "cryptography; extra == \"dev\"",
+      "freezegun; extra == \"dev\"",
+      "pytest-cov; extra == \"dev\"",
+      "pytest-django; extra == \"dev\"",
+      "pytest-xdist; extra == \"dev\"",
+      "pytest; extra == \"dev\"",
+      "tox; extra == \"dev\"",
+      "ruff; extra == \"dev\"",
+      "yesqa; extra == \"dev\"",
+      "pyupgrade; extra == \"dev\"",
+      "pre-commit; extra == \"dev\"",
+      "Sphinx; extra == \"dev\"",
+      "sphinx_rtd_theme>=0.1.9; extra == \"dev\"",
+      "python-jose==3.3.0; extra == \"dev\"",
+      "python-jose==3.3.0; extra == \"python-jose\"",
+      "cryptography>=3.3.1; extra == \"crypto\""
+    ]
+  },
+  {
+    "name": "asgiref",
+    "version": "3.13.0",
+    "requires_python": ">=3.11",
+    "requires_dist": [
+      "packaging; extra == \"tests\"",
+      "pytest; extra == \"tests\"",
+      "pytest-asyncio; extra == \"tests\"",
+      "mypy>=1.14.0; extra == \"mypy\""
+    ]
+  },
+  {
+    "name": "psycopg",
+    "version": "3.3.8",
+    "requires_python": ">=3.10",
+    "requires_dist": [
+      "typing-extensions>=4.6; python_version < \"3.13\"",
+      "tzdata; sys_platform == \"win32\"",
+      "psycopg-c==3.3.8; implementation_name != \"pypy\" and extra == \"c\"",
+      "psycopg-binary==3.3.8; implementation_name != \"pypy\" and extra == \"binary\"",
+      "psycopg-pool; extra == \"pool\"",
+      "anyio>=4.0; extra == \"test\"",
+      "mypy>=2.1.0; implementation_name != \"pypy\" and extra == \"test\"",
+      "pproxy>=2.7; extra == \"test\"",
+      "pytest>=6.2.5; extra == \"test\"",
+      "pytest-cov>=3.0; extra == \"test\"",
+      "pytest-randomly>=3.5; extra == \"test\"",
+      "ast-comments>=1.1.2; extra == \"dev\"",
+      "black>=26.1.0; extra == \"dev\"",
+      "codespell>=2.2; extra == \"dev\"",
+      "cython-lint>=0.21; extra == \"dev\"",
+      "dnspython>=2.1; extra == \"dev\"",
+      "flake8>=4.0; extra == \"dev\"",
+      "isort[colors]>=6.0; extra == \"dev\"",
+      "isort-psycopg>=0.0.3; extra == \"dev\"",
+      "mypy>=2.1.0; extra == \"dev\"",
+      "pre-commit>=4.0.1; extra == \"dev\"",
+      "types-setuptools>=57.4; extra == \"dev\"",
+      "types-shapely>=2.0; extra == \"dev\"",
+      "wheel>=0.37; extra == \"dev\"",
+      "Sphinx>=9.1; extra == \"docs\"",
+      "furo==2025.12.19; extra == \"docs\"",
+      "sphinx-autobuild>=2025.8.25; extra == \"docs\"",
+      "sphinx-autodoc-typehints>=3.10.2; extra == \"docs\""
+    ]
+  },
+  {
+    "name": "django-cors-headers",
+    "version": "4.9.0",
+    "requires_python": ">=3.9",
+    "requires_dist": [
+      "asgiref>=3.6",
+      "django>=4.2"
+    ]
+  },
+  {
+    "name": "pytest",
+    "version": "9.0.3",
+    "requires_python": ">=3.10",
+    "requires_dist": [
+      "colorama>=0.4; sys_platform == \"win32\"",
+      "exceptiongroup>=1; python_version < \"3.11\"",
+      "iniconfig>=1.0.1",
+      "packaging>=22",
+      "pluggy<2,>=1.5",
+      "pygments>=2.7.2",
+      "tomli>=1; python_version < \"3.11\"",
+      "argcomplete; extra == \"dev\"",
+      "attrs>=19.2; extra == \"dev\"",
+      "hypothesis>=3.56; extra == \"dev\"",
+      "mock; extra == \"dev\"",
+      "requests; extra == \"dev\"",
+      "setuptools; extra == \"dev\"",
+      "xmlschema; extra == \"dev\""
+    ]
+  },
+  {
+    "name": "djangorestframework",
+    "version": "3.18.3",
+    "requires_python": ">=3.10",
+    "requires_dist": [
+      "django>=5.2"
+    ]
+  },
+  {
+    "name": "typing_extensions",
+    "version": "4.16.0",
+    "requires_python": ">=3.9",
+    "requires_dist": []
+  },
+  {
+    "name": "pypdf",
+    "version": "6.21.4",
+    "requires_python": ">=3.9",
+    "requires_dist": [
+      "typing_extensions >= 4.0; python_version < '3.11'",
+      "brotli>=1.2.0 ; extra == \"brotli\"",
+      "cryptography>3.0 ; extra == \"crypto\"",
+      "PyCryptodome ; extra == \"cryptodome\"",
+      "flit ; extra == \"dev\"",
+      "pip-tools ; extra == \"dev\"",
+      "pre-commit ; extra == \"dev\"",
+      "pytest-cov ; extra == \"dev\"",
+      "pytest-socket ; extra == \"dev\"",
+      "pytest-timeout ; extra == \"dev\"",
+      "pytest-xdist ; extra == \"dev\"",
+      "wheel ; extra == \"dev\"",
+      "myst_parser ; extra == \"docs\"",
+      "sphinx ; extra == \"docs\"",
+      "sphinx_rtd_theme ; extra == \"docs\"",
+      "fonttools ; extra == \"fonts\"",
+      "arabic-reshaper ; extra == \"full\"",
+      "brotli>=1.2.0 ; extra == \"full\"",
+      "cryptography>3.0 ; extra == \"full\"",
+      "fonttools ; extra == \"full\"",
+      "Pillow>=8.0.0 ; extra == \"full\"",
+      "python-bidi ; extra == \"full\"",
+      "Pillow>=8.0.0 ; extra == \"image\"",
+      "arabic-reshaper ; extra == \"rtl-text\"",
+      "python-bidi ; extra == \"rtl-text\""
+    ]
+  },
+  {
+    "name": "pycountry",
+    "version": "24.6.1",
+    "requires_python": ">=3.8",
+    "requires_dist": [
+      "importlib-resources (>5.12.0) ; python_version < \"3.9\""
+    ]
+  },
+  {
+    "name": "pytest-django",
+    "version": "4.14.0",
+    "requires_python": ">=3.10",
+    "requires_dist": [
+      "pytest>=7.0.0",
+      "django>=5.2; extra == \"django\"",
+      "sphinx; extra == \"docs\"",
+      "sphinx-rtd-theme; extra == \"docs\""
+    ]
+  },
+  {
+    "name": "psycopg-binary",
+    "version": "3.3.8",
+    "requires_python": ">=3.10",
+    "requires_dist": []
+  },
+  {
+    "name": "django-filter",
+    "version": "25.2",
+    "requires_python": ">=3.10",
+    "requires_dist": [
+      "Django>=5.2",
+      "djangorestframework ; extra == \"drf\""
+    ]
+  }
+]

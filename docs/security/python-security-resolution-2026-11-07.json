@@ -1,0 +1,90 @@
+{
+  "date": "2026-11-07",
+  "tool": "pip-audit 2.10.1",
+  "source": "PyPI / PyPA advisory database",
+  "before_raw_records": 7,
+  "before_distinct_scanner_ids": 6,
+  "before_alias_deduplicated_advisories": 6,
+  "before": {
+    "raw_findings": 7,
+    "affected": [
+      {
+        "name": "djangorestframework",
+        "version": "3.16.1",
+        "raw_findings": 5,
+        "advisories": [
+          {
+            "id": "PYSEC-2026-3827",
+            "fix_versions": [
+              "3.17.2"
+            ],
+            "aliases": [
+              "GHSA-2m8g-3cmr-wg3w",
+              "CVE-2026-73228"
+            ]
+          },
+          {
+            "id": "PYSEC-2026-3828",
+            "fix_versions": [
+              "3.17.2"
+            ],
+            "aliases": [
+              "GHSA-g47c-3xmw-q6m2",
+              "CVE-2026-73229"
+            ]
+          },
+          {
+            "id": "CVE-2026-114138",
+            "fix_versions": [
+              "3.18.2"
+            ],
+            "aliases": [
+              "GHSA-33wh-fxxf-88vv"
+            ]
+          },
+          {
+            "id": "CVE-2026-114136",
+            "fix_versions": [
+              "3.18.2"
+            ],
+            "aliases": [
+              "GHSA-3547-9m27-7rxg"
+            ]
+          },
+          {
+            "id": "CVE-2026-114137",
+            "fix_versions": [
+              "3.18.2"
+            ],
+            "aliases": [
+              "GHSA-xw6w-gcfp-cf8m"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "pytest",
+        "version": "8.4.2",
+        "raw_findings": 2,
+        "advisories": [
+          {
+            "id": "PYSEC-2026-1845",
+            "fix_versions": [
+              "9.0.3"
+            ],
+            "aliases": [
+              "GHSA-6w46-j5rx-g56g",
+              "CVE-2025-71176"
+            ]
+          }
+        ]
+      }
+    ],
+    "skipped": []
+  },
+  "after_raw_records": 0,
+  "after_unique_advisories": 0,
+  "after_skipped": 0,
+  "after_distributions": 26,
+  "note": "PYSEC-2026-1845 occurs twice in raw feed; CVE-2025-71176 is its alias. Prior evidence retained unchanged."
+}

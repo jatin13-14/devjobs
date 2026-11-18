@@ -1,0 +1,21 @@
+import { afterEach, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { AdminLayout } from './AdminLayout.jsx';
+vi.mock('../../features/auth/useAuth.js', () => ({ useAuth: () => ({ user: { email: 'admin@example.test' }, logout: vi.fn() }) }));
+afterEach(() => { cleanup(); localStorage.clear(); });
+it('persists the isolated admin theme and exposes every supported section', () => {
+  localStorage.setItem('devjobs.candidate.theme', 'dark');
+  localStorage.setItem('devjobs.recruiter.theme', 'light');
+  const { container, unmount } = render(<MemoryRouter><AdminLayout /></MemoryRouter>);
+  fireEvent.click(screen.getByRole('button', { name: 'Switch to dark mode' }));
+  expect(container.querySelector('.admin-dark')).toBeInTheDocument();
+  expect(localStorage.getItem('devjobs.admin.theme')).toBe('dark');
+  expect(localStorage.getItem('devjobs.candidate.theme')).toBe('dark');
+  expect(localStorage.getItem('devjobs.recruiter.theme')).toBe('light');
+  expect(screen.getByRole('navigation', { name: 'Admin workspace' }).querySelectorAll('a')).toHaveLength(6);
+  expect(container.querySelector('[aria-label="More admin sections"]')).toBeInTheDocument();
+  unmount();
+  render(<MemoryRouter><AdminLayout /></MemoryRouter>);
+  expect(screen.getByRole('button', { name: 'Switch to light mode' })).toBeInTheDocument();
+});
