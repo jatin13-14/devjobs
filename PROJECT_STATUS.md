@@ -1,5 +1,15 @@
 # Project status
 
+## Issue 11 integrated journeys — 2026-11-18
+
+Working-tree focused workflow PASS, development Chromium 85/85 PASS, and
+production-bundle Chromium 76/76 PASS. Each owned PostgreSQL 17 run passed 221
+backend tests with 11 optional Redis skips and cleaned its resources. Job update
+waits for the PATCH response and exact preview navigation before reload. Frozen
+tree acceptance and delivery remain pending; the inherited picomatch audit gate
+remains a separate unresolved blocker. See docs/ISSUE_11_INTEGRATED_JOURNEY.md.
+
+
 ## M-11 operational readiness — 2026-11-18
 
 In progress; readiness uses a dedicated PostgreSQL connection with a one-second

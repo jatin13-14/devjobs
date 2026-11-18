@@ -75,7 +75,7 @@ async function call(page, method, path, data) {
 }
 
 test('candidate, recruiter and administrator workflow with private access enforcement', async ({ browser }) => {
-  test.setTimeout(120000);
+  test.setTimeout(180000);
   expect(run, 'Use backend/run_browser.py to enforce the dedicated database').toBeTruthy();
   const browserErrors = [];
   const developmentWarnings = [];
@@ -212,7 +212,16 @@ test('candidate, recruiter and administrator workflow with private access enforc
   await expect(recruiter).toHaveURL(/recruiter\/jobs\/[0-9a-f-]+\?/);
   const job = { id: new URL(recruiter.url()).pathname.split('/').pop(), title: `Synthetic Engineer ${run}` };
   await recruiter.goto(`/recruiter/jobs/${job.id}?company=${companyId}`);
-  await call(recruiter, 'patch', `/jobs/${job.id}/`, { description: 'Synthetic edited browser test role' });
+  await recruiter.getByRole('button', { name: 'Edit', exact: true }).click();
+  await recruiter.getByLabel('Description', { exact: true }).fill('Synthetic edited browser test role');
+  const saved = recruiter.waitForResponse((response) => response.request().method() === 'PATCH'
+    && new URL(response.url()).pathname === `/api/v1/jobs/${job.id}/`);
+  await recruiter.getByRole('button', { name: 'Save changes' }).click();
+  expect((await saved).status()).toBe(200);
+  await expect(recruiter).toHaveURL(`${process.env.E2E_FRONTEND_URL}/recruiter/jobs/${job.id}?company=${companyId}`);
+  await expect(recruiter.getByText('Synthetic edited browser test role')).toBeVisible();
+  await recruiter.reload();
+  await expect(recruiter.getByText('Synthetic edited browser test role')).toBeVisible();
   await recruiter.getByRole('button', { name: 'Publish', exact: true }).click();
   await recruiter.getByRole('button', { name: 'OK', exact: true }).click();
   await expect(recruiter.getByText('JOB PREVIEW · Published')).toBeVisible();
@@ -225,6 +234,9 @@ test('candidate, recruiter and administrator workflow with private access enforc
   await expect(candidate).toHaveURL(/candidate\/applications\/[0-9a-f-]+/);
   await candidate.goto('/candidate/applications');
   await expect(candidate.getByRole('heading', { name: 'My applications' })).toBeVisible();
+  await expect(candidate.getByText(job.title)).toBeVisible();
+  await candidate.reload();
+  await expect(candidate.getByText(job.title)).toBeVisible();
   const applications = await call(recruiter, 'get', `/jobs/${job.id}/applications/`);
   const application = applications.results[0];
   const candidateAuth = await auth(candidate);
@@ -245,6 +257,14 @@ test('candidate, recruiter and administrator workflow with private access enforc
     data: { status: 'REVIEWING' }, headers: { Authorization: `Bearer ${memberAuth.access}` },
   });
   expect(statusDenied.status()).toBe(403);
+  const editDenied = await memberPage.request.patch(`${api}/jobs/${job.id}/`, {
+    data: { description: 'Unauthorized change' }, headers: { Authorization: `Bearer ${memberAuth.access}` },
+  });
+  expect(editDenied.status()).toBe(403);
+  const companyDenied = await memberPage.request.patch(`${api}/companies/${companyId}/`, {
+    data: { name: 'Unauthorized change' }, headers: { Authorization: `Bearer ${memberAuth.access}` },
+  });
+  expect(companyDenied.status()).toBe(403);
   await recruiter.goto(`/recruiter/companies/${companyId}`);
   await recruiter.getByRole('combobox', { name: 'Status for Synthetic member' }).click();
   await recruiter.getByText('SUSPENDED', { exact: true }).last().click();
@@ -263,6 +283,10 @@ test('candidate, recruiter and administrator workflow with private access enforc
   await recruiter.getByRole('combobox', { name: /Update status for/ }).click();
   await recruiter.getByText('REVIEWING', { exact: true }).last().click();
   await expect(recruiter.locator('.ant-tag').filter({ hasText: /^REVIEWING$/ })).toBeVisible();
+  await recruiter.reload();
+  await expect(recruiter.locator('.ant-tag').filter({ hasText: /^REVIEWING$/ })).toBeVisible();
+  await candidate.reload();
+  await expect(candidate.getByText('Reviewing', { exact: true })).toBeVisible();
   const overviewRequests = [];
   const recordOverview = (request) => { if (new URL(request.url()).pathname.match(/\/jobs\/[^/]+\/applications\/$/)) overviewRequests.push(request.url()); };
   recruiter.on('request', recordOverview);
@@ -278,11 +302,19 @@ test('candidate, recruiter and administrator workflow with private access enforc
   await candidate.getByRole('button', { name: 'Withdraw', exact: true }).click();
   await candidate.getByRole('button', { name: 'Withdraw', exact: true }).last().click();
   await expect(candidate.getByText('Withdrawn', { exact: true })).toBeVisible();
+  await candidate.reload();
+  await expect(candidate.getByText('Withdrawn', { exact: true })).toBeVisible();
   const { access } = await auth(recruiter);
   const denied = await recruiter.request.get(`${api}/jobs/${job.id}/applications/${application.id}/resume/`, { headers: { Authorization: `Bearer ${access}` } });
   expect([403, 404]).toContain(denied.status());
 
-  await call(recruiter, 'post', `/jobs/${job.id}/close/`);
+  await recruiter.goto(`/recruiter/jobs/${job.id}?company=${companyId}`);
+  await recruiter.getByRole('button', { name: 'Close job' }).click();
+  await recruiter.getByRole('button', { name: 'OK', exact: true }).click();
+  await expect(recruiter.getByText('JOB PREVIEW · Closed')).toBeVisible();
+  await recruiter.reload();
+  await expect(recruiter.getByText('JOB PREVIEW · Closed')).toBeVisible();
+  expect((await candidate.request.get(`${api}/jobs/${job.id}/`)).status()).toBe(404);
 
   const adminContext = await browser.newContext(); const admin = await adminContext.newPage();
   admin.on('pageerror', (error) => browserErrors.push(error.message));
@@ -345,6 +377,10 @@ test('candidate, recruiter and administrator workflow with private access enforc
   await candidate.reload();
   await expect(candidate).toHaveURL(/login/);
   expect(await candidate.evaluate(() => JSON.parse(localStorage.getItem('devjobs.auth.v2'))?.credentials)).toBeNull();
+  await login(candidate, `e2e-candidate-${run}@example.test`);
+  await candidate.goto('/candidate/applications');
+  await expect(candidate.getByText('Withdrawn', { exact: true })).toBeVisible();
+  await expect(recruiter.getByRole('button', { name: 'Open user menu' })).toBeVisible();
   console.log(`Existing Ant Design development warnings: ${developmentWarnings.length}; browser errors: ${browserErrors.length}`);
   expect(browserErrors).toEqual([]);
   await candidateContext.close(); await recruiterContext.close(); await adminContext.close();
