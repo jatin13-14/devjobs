@@ -225,7 +225,7 @@ Reasons/history are private administrative information and must not include secr
 
 ## Operational probes
 
-`GET /api/v1/health/` remains public dependency-free liveness. `GET /api/v1/ready/` is public aggregate readiness: PostgreSQL query, cache round-trip and private storage write/read/delete. Returns 200 `{"status":"ready"}` or 503 `{"status":"unavailable"}` with no-store; no dependency details. Both ignore bearer headers; protected routes retain their existing authentication and moderation checks.
+`GET /api/v1/health/` remains public dependency-free liveness. `GET /api/v1/ready/` checks PostgreSQL and, when configured, Redis PING without mutating cache keys or inspecting storage. Returns 200 `{"status":"ready"}` or 503 `{"status":"unavailable"}` with no-store; no dependency details. Both ignore bearer headers; protected routes retain their existing authentication and moderation checks. This does not verify storage write access; see [the storage release gate](M11_STORAGE_VERIFICATION.md).
 
 ### Workflow UI completion (2026-11-07)
 Candidate profile and own skills use the existing `/candidates/me/profile/` and

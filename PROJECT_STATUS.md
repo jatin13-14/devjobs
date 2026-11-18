@@ -1,5 +1,18 @@
 # Project status
 
+## M-11 operational readiness — 2026-11-18
+
+In progress; readiness uses a dedicated PostgreSQL connection with a one-second
+transaction-local statement timeout and a two-second socket-wait deadline, and
+Redis PING without cache-key mutations. It does not inspect storage. A separate
+private-storage upload/read/delete verification remains a release gate; see
+`docs/M11_STORAGE_VERIFICATION.md`. Working-tree PostgreSQL 17.12 acceptance
+passed 221 tests with eight optional Redis skips; frontend lint, 387 tests and
+build passed. The enforced npm audit failed with five high findings inherited
+from the picomatch advisory. Disposable Redis integration passed: real connect/read timeouts measured 0.305–0.312s
+and 0.303–0.304s with 0.3s limits; PING, recovery and key preservation passed.
+Exact-export acceptance and delivery remain pending; no security exception is approved.
+
 ## Final independent E2E working-tree audit — 2026-11-11
 
 Working-tree security review PASS: all 22 changed/untracked files inspected;
