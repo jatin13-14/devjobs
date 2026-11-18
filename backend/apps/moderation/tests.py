@@ -3,6 +3,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
+from apps.accounts.sessions import issue_session
 from apps.candidates.models import CandidateProfile
 from apps.companies.services import create_company
 from apps.jobs.models import Job
@@ -109,11 +110,10 @@ class ModerationTests(TestCase):
         )
 
     def test_suspended_users_existing_tokens_and_records(self):
-        from rest_framework_simplejwt.tokens import RefreshToken
 
         from apps.applications.models import Application
 
-        token = str(RefreshToken.for_user(self.candidate).access_token)
+        token = str(issue_session(self.candidate).access_token)
         application = Application.objects.create(
             candidate=self.candidate.candidate_profile, job=self.job
         )

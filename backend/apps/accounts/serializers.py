@@ -86,6 +86,12 @@ class SafeUserSerializer(serializers.ModelSerializer):
 
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        from .sessions import issue_session
+
+        return issue_session(user)
+
     def validate(self, attrs):
         try:
             attrs["email"] = User.objects.normalize_email(attrs["email"])

@@ -332,8 +332,13 @@ test('candidate, recruiter and administrator workflow with private access enforc
   await candidate.getByRole('button', { name: 'Remove resume', exact: true }).press('Enter');
   await candidate.getByRole('button', { name: 'Remove', exact: true }).press('Enter');
   await expect(candidate.getByRole('status')).toHaveText('No resume uploaded.');
+  const oldCredentials = await candidate.evaluate(() => JSON.parse(localStorage.getItem('devjobs.auth.v2')).credentials);
+  const logoutResponse = candidate.waitForResponse((response) => response.url().endsWith('/auth/logout/'));
   await candidate.getByRole('button', { name: 'Open user menu' }).click();
   await candidate.getByRole('menuitem', { name: /Log out/i }).click();
+  expect((await logoutResponse).status()).toBe(204);
+  expect((await candidate.request.get(`${api}/candidates/me/profile/`, { headers: { Authorization: `Bearer ${oldCredentials.access}` } })).status()).toBe(401);
+  expect((await candidate.request.post(`${api}/auth/token/refresh/`, { data: { refresh: oldCredentials.refresh } })).status()).toBe(401);
   // Logout commits asynchronously under the canonical lock. Wait for its UI
   // transition before navigation destroys the initiating document.
   await expect(candidate).toHaveURL(/login/);

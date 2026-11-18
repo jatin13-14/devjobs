@@ -1,3 +1,4 @@
+import { message } from 'antd';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { assertLogin, authApi, beginLogin, cancelLogin, commitLogin, ownRequests, sessionStore } from './api.js';
 import { SessionExpiredError } from './sessionStore.js';
@@ -54,7 +55,16 @@ function SessionProvider({ record, children }) {
         assertLifetime();
         cancelLogin(lifetime.operation);
         lifetime.generation += 1;
-        return sessionStore.logout(record?.epoch ?? null, assertLifetime);
+        const refresh = record?.credentials?.refresh;
+        const result = await sessionStore.logout(record?.epoch ?? null, assertLifetime);
+        if (refresh) {
+          try {
+            await authApi.logout(refresh);
+          } catch {
+            message.warning('Signed out on this device, but server logout could not be confirmed.');
+          }
+        }
+        return result;
       },
     };
   }, [record, lifetime]);

@@ -4,7 +4,7 @@ from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.settings import api_settings
-from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
+from rest_framework_simplejwt.tokens import AccessToken
 
 from apps.accounts.models import User
 from apps.accounts.throttles import RefreshRateThrottle, RegistrationRateThrottle
@@ -77,7 +77,9 @@ class AuthHardeningTests(TestCase):
 
     def test_refresh_valid_shape_lifetime_invalid_attempts_and_separate_login_bucket(self):
         user = User.objects.create_user("refresh-fixture@example.test", password="Unrelated-98!")
-        token = RefreshToken.for_user(user)
+        from .sessions import issue_session
+
+        token = issue_session(user)
         response = self.client.post(
             "/api/v1/auth/token/refresh/", {"refresh": str(token)}, format="json"
         )

@@ -47,6 +47,7 @@ def verify(spec, routes):
                 "/api/v1/auth/login/",
                 "/api/v1/auth/token/",
                 "/api/v1/auth/token/refresh/",
+                "/api/v1/auth/logout/",
             } or (
                 method == "get"
                 and path

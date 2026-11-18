@@ -183,7 +183,6 @@ def main(*, backend_only=False):
             )
             # Skills scenarios must not consume the anonymous login/registration
             # quota used by the authentication regression scenarios in this run.
-            from rest_framework_simplejwt.tokens import RefreshToken
 
             from apps.candidates.models import CandidateProfile
 
@@ -193,7 +192,9 @@ def main(*, backend_only=False):
                 CandidateProfile.objects.create(
                     user=candidate, full_name=f"Synthetic skills {suffix}"
                 )
-                refresh = RefreshToken.for_user(candidate)
+                from apps.accounts.sessions import issue_session
+
+                refresh = issue_session(candidate)
                 skills_accounts[suffix] = {
                     "access": str(refresh.access_token),
                     "refresh": str(refresh),
