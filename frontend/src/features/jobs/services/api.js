@@ -1,4 +1,4 @@
-import { captureRequestOwnership, http } from '../../auth/api.js';
+import { assertRequestOwnership, captureRequestOwnership, http } from '../../auth/api.js';
 
 export const jobsApi = {
   list: (params) => http.get('/jobs/', { params }).then(({ data }) => data),
@@ -14,14 +14,11 @@ export const jobsApi = {
   companyJobs: (id, params, ownership) => http.get(`/companies/${id}/jobs/`, { ...ownership, params }).then(({ data }) => data),
   companyJob: async (companyId, jobId) => {
     const ownership = captureRequestOwnership();
-    let page = 1;
-    while (true) {
-      const data = await jobsApi.companyJobs(companyId, { page }, ownership);
-      const job = (data.results || []).find((item) => item.id === jobId);
-      if (job) return job;
-      if (!data.next) throw new Error('This job is not part of the selected company.');
-      page += 1;
-    }
+    const data = await jobsApi.companyJobs(companyId, { job_id: jobId, pagination: 'cursor', page_size: 1 }, ownership);
+    assertRequestOwnership(ownership);
+    const job = (data.results || []).find((item) => item.id === jobId);
+    if (!job) throw new Error('This job is not part of the selected company.');
+    return job;
   },
   createJob: (payload, config) => http.post('/jobs/', payload, config).then(({ data }) => data),
   updateJob: (id, payload, config) => http.patch(`/jobs/${id}/`, payload, config).then(({ data }) => data),

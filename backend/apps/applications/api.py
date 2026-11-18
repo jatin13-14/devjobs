@@ -6,7 +6,6 @@ from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied as DRFPermissionDenied
 from rest_framework.generics import ListAPIView
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -17,14 +16,15 @@ from apps.companies.models import Company, CompanyMembership
 from apps.companies.services import authorize_company_operation
 from apps.jobs.models import Job
 from apps.recruiters.models import RecruiterProfile
+from config.pagination import CollectionPagination
 
 from .models import Application, ApplicationStatusHistory
 
 
-class ApplicationPagination(PageNumberPagination):
-    page_size = 20
-    page_size_query_param = "page_size"
-    max_page_size = 100
+class ApplicationPagination(CollectionPagination):
+    """Preserve page defaults; cursor keys must be non-null and unique together."""
+
+    cursor_ordering = ("-applied_at", "id")
 
 
 def application_list_queryset():

@@ -466,3 +466,22 @@ candidate full_name/professional_headline; no full applicant payload is returned
 All statuses count toward total/day activity. Ordering is applied_at DESC/id ASC.
 Counts/recent rows can drift under concurrent writes; no snapshot guarantee.
 See M07_RECRUITER_OVERVIEW.md and OpenAPI. No existing contract is retired.
+
+## M-06 compatible keyset retrieval
+
+All legacy opt-in collections, job/application lists and admin collections also
+accept `pagination=cursor`. It returns `{next, previous: null, results}` without
+count, reads at most page_size+1 (default 20, cap 100), and uses no COUNT/OFFSET.
+First requests omit cursor; next contains a signed, 24-hour continuation bound
+to user/path/query/order. Invalid/expired/transplanted tokens return 400 after
+authorization. Page is ignored; page_size may change. Existing defaults, legacy
+arrays, page-number envelopes and invalid-size semantics are preserved.
+Job cursor order is created_at DESC/id DESC; all other collection orders remain.
+Job lists accept exact job_id UUID filtering within existing visibility.
+Dashboard previews and protected job lookup use count-free reads. See
+[M06_API_SCALABILITY.md](M06_API_SCALABILITY.md) for full audit, concurrency,
+query evidence and the outstanding legacy retirement policy.
+
+Cursor application retrieval always uses applied_at DESC/id ASC, ignoring the
+legacy OrderingFilter input so nullable/nonunique user-selected fields cannot
+skip ties or produce invalid seek boundaries. Page-mode ordering is unchanged.

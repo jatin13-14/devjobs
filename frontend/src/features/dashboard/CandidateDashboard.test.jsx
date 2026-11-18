@@ -52,8 +52,24 @@ it('requests only bounded previews and recognizes skills without traversing thei
   render(<MemoryRouter><CandidateDashboard /></MemoryRouter>);
   expect(await screen.findByText('Welcome back, Casey 👋')).toBeInTheDocument();
   expect(screen.getByText('22%')).toBeInTheDocument();
-  expect(http.get).toHaveBeenCalledWith('/candidates/me/skills/', { params: { pagination: 'page', page: 1, page_size: 1 } });
+  expect(http.get).toHaveBeenCalledWith('/candidates/me/skills/', { params: { pagination: 'cursor', page_size: 1 } });
   expect(http.get.mock.calls.filter(([url]) => url.includes('/skills/'))).toHaveLength(1);
-  expect(jobsApi.applications).toHaveBeenCalledWith({ page: 1, page_size: 3 });
-  expect(jobsApi.list).toHaveBeenCalledWith({ page: 1, page_size: 3 });
+  expect(jobsApi.applications).toHaveBeenCalledWith({ pagination: 'cursor', page_size: 3 });
+  expect(jobsApi.list).toHaveBeenCalledWith({ pagination: 'cursor', page_size: 3 });
+});
+
+it('discards a retired dashboard response after the next view has loaded', async () => {
+  let resolveOld;
+  http.get.mockImplementation((url) => Promise.resolve({ data: url.includes('/skills/') ? { results: [] } : { full_name: 'Current' } }));
+  resumeApi.metadata.mockResolvedValue(null);
+  jobsApi.applications.mockResolvedValue({ results: [] });
+  jobsApi.list.mockImplementationOnce(() => new Promise((resolve) => { resolveOld = resolve; })).mockResolvedValue({ results: [{ id: 'current', title: 'Current job', company: { name: 'Current company' } }] });
+  const old = render(<MemoryRouter><CandidateDashboard /></MemoryRouter>);
+  old.unmount();
+  render(<MemoryRouter><CandidateDashboard /></MemoryRouter>);
+  expect(await screen.findByText('Current job')).toBeInTheDocument();
+  const { act } = await import('@testing-library/react');
+  await act(async () => resolveOld({ results: [{ id: 'old', title: 'Retired job', company: { name: 'Old company' } }] }));
+  expect(screen.getByText('Current job')).toBeInTheDocument();
+  expect(screen.queryByText('Retired job')).not.toBeInTheDocument();
 });

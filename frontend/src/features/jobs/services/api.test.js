@@ -2,15 +2,14 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { http } from '../../auth/api.js';
 import { jobsApi } from './api.js';
 
-vi.mock('../../auth/api.js', () => ({ captureRequestOwnership: () => ({}), http: { get: vi.fn() } }));
+vi.mock('../../auth/api.js', () => ({ assertRequestOwnership: vi.fn(), captureRequestOwnership: () => ({}), http: { get: vi.fn() } }));
 afterEach(() => vi.restoreAllMocks());
 
-it('finds protected company jobs beyond the first page without following arbitrary next URLs', async () => {
+it('looks up protected jobs in one bounded company-scoped request', async () => {
   const list = vi.spyOn(jobsApi, 'companyJobs')
-    .mockResolvedValueOnce({ results: [{ id: 'first' }], next: 'https://untrusted.invalid/' })
     .mockResolvedValueOnce({ results: [{ id: 'target', status: 'DRAFT' }], next: null });
   expect(await jobsApi.companyJob('company', 'target')).toEqual({ id: 'target', status: 'DRAFT' });
-  expect(list).toHaveBeenNthCalledWith(2, 'company', { page: 2 }, {});
+  expect(list).toHaveBeenCalledExactlyOnceWith('company', { job_id: 'target', pagination: 'cursor', page_size: 1 }, {});
 });
 
 it('rejects jobs absent from the authorized company collection', async () => {

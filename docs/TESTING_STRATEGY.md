@@ -2162,3 +2162,13 @@ static-message teardown and exact exported-tree acceptance commands. The origina
 intermittent Remove python audit failure is preserved; its precise historical
 renderer schedule is not established. No earlier working-tree pass substitutes
 for the full exact staged-snapshot gate.
+
+## M-06 exact-export acceptance
+
+See M06_API_SCALABILITY.md for new keyset/lookup/query-plan HTTP regressions,
+frontend stale-view/preview coverage and Chromium count-free assertions. Run
+frontend full tests/lint/build, backend lint/changed-format, OpenAPI, pure runner
+safety, standalone and concurrent owned PostgreSQL 17.12/Chromium on the same
+staged-tree export. Verify every exported blob and the staged tree before commit;
+keep results/commit identities outside that tree. Existing array, numbered-page,
+JWT, cross-tab, refresh/deadline, ownership and isolation assertions are retained.

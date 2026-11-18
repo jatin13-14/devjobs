@@ -56,3 +56,13 @@
 - Latest verified PR #1 head: `d048b1720602bcbe19c78d3725a9c07c900e4ce4`.
 - Backend verification #9 [42076673522](https://github.com/jatin13-14/devjobs/actions/runs/42076673522) and frontend verification #6 [42076673521](https://github.com/jatin13-14/devjobs/actions/runs/42076673521) both passed on that head.
 - PR #1 is open and unmerged; no approval or merge is recorded. Earlier dated hosted CI entries remain historical records of the heads and run results at those snapshots.
+
+## 2026-11-17 — M-06 compatible API scalability
+
+Added shared opt-in signed keyset retrieval while preserving legacy arrays and
+numbered pages. Dashboard previews avoid discarded counts; protected job lookup
+uses exact scoped UUID filtering instead of page traversal. Measured scan/sort
+behavior justified a Job(created_at DESC, id DESC) index and row-value seek.
+See M06_API_SCALABILITY.md for audit, contracts, regression commands and limits.
+Exact-export acceptance results and Git/CI identities are delivered externally.
+Legacy retirement and numbered navigation/count policy remain owner decisions.

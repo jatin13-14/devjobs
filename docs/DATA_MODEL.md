@@ -65,3 +65,12 @@ Resume upload now uses the private current-document association described below.
 Additive fields: `Company.is_suspended` and `Job.is_hidden`, both false by default. Accounts reuse Django `User.is_active`. `ModerationEvent` stores UUID identity, protected administrator FK, target type/UUID, action, reason, previous/new boolean state and creation timestamp, indexed by target/time. Target UUIDs deliberately preserve audit identity independent of target lifecycle. PostgreSQL trigger rejects event updates/deletes; trusted database operators retain ultimate control. No audit registration in Django admin and no API mutation route for history. No historical job/application deletion or membership status rewrite occurs.
 
 Migrations: `companies.0008_company_is_suspended`, `jobs.0002_job_is_hidden`, `moderation.0001_initial`, `moderation.0002_immutable_history`.
+
+## M-06 cursor retrieval index
+
+Migration `jobs.0003_job_cursor_created_index` adds `jobs_cursor_created_idx`
+on Job(created_at DESC, id DESC). Disposable PostgreSQL plans showed a full
+scan/sort for deep retrieval; a row-value seek can use this index directly.
+No columns, ownership constraints or existing indexes change. Ordinary migration
+application takes PostgreSQL's index-creation lock; production rollout must plan
+for table size/write traffic. No production migration is performed here.
