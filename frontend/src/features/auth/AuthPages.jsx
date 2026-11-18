@@ -1,3 +1,4 @@
+import { loginDestination } from './loginDestination.js';
 import { useState } from 'react';
 import { Alert, Button, Card, Form, Input, Typography } from 'antd';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
@@ -24,8 +25,8 @@ function Passwords() {
 export function LoginPage({ admin = false }) {
   const [form] = Form.useForm(); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const { user, login } = useAuth(); const navigate = useNavigate(); const location = useLocation();
-  if (user) return <Navigate to={user.is_platform_admin ? '/admin' : user.role === 'recruiter' ? '/recruiter' : '/candidate'} replace />;
-  async function submit(values) { setBusy(true); setError(''); try { const u = await login(values); const requested = location.state?.from?.pathname; const allowed = requested && (requested === '/' || (u.is_platform_admin ? requested.startsWith('/admin') : requested.startsWith(`/${u.role}/`) || requested === `/${u.role}` || (u.role === 'candidate' && /^\/jobs\/[^/]+\/apply$/.test(requested)))); navigate(allowed ? requested : (u.is_platform_admin ? '/admin' : u.role === 'recruiter' ? '/recruiter' : '/candidate'), { replace: true }); } catch (e) { setError(messageFor(e)); } finally { setBusy(false); } }
+  if (user) return <Navigate to={loginDestination(user, location.state?.from)} replace />;
+  async function submit(values) { setBusy(true); setError(''); try { const u = await login(values); navigate(loginDestination(u, location.state?.from), { replace: true }); } catch (e) { setError(messageFor(e)); } finally { setBusy(false); } }
   return <AuthCard role={admin ? 'admin' : 'candidate'} title={admin ? 'Administrator sign in' : 'Welcome back'} subtitle={admin ? 'Use your authorized platform account.' : 'Sign in to your career or hiring workspace.'}>{error && <Alert role="alert" type="error" title={error} showIcon className="auth-alert" />}<Form form={form} layout="vertical" onFinish={submit} requiredMark={false}>
     <Form.Item name="email" label="Email address" rules={[{ required: true, message: 'Enter your email address.' }, { type: 'email', message: 'Enter a valid email address.' }]}><Input autoComplete="email" /></Form.Item>
     <Form.Item name="password" label="Password" rules={[{ required: true, message: 'Enter your password.' }]}><Input.Password autoComplete="current-password" /></Form.Item>

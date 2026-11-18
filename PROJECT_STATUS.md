@@ -2595,3 +2595,19 @@ M-06 legacy retirement and intentional numbered-page counts/offsets remain open
 pending an approved compatibility/navigation policy. No M-02/M-11, deployment,
 merge, PR #1 modification or PR #2 target change. Unrelated local operations notes
 remain preserved and excluded from staging.
+
+## P0 route rendering recovery — 2026-11-17
+
+Recovered the interrupted 26-pattern route audit and historical failure logs on
+fix/p0-route-rendering at verified M-06 03ce02cf. Added explicit anonymous,
+candidate, company OWNER/ADMIN/MEMBER, outsider and platform-admin direct-load,
+reload and navigation coverage plus five admin query views. Login preserves safe
+query/hash across session initialization; explicit login can recover corrupt auth
+storage without replacing a peer session. Read-response validation, application
+render boundaries and a URL-preserving 404 provide usable failure/recovery states.
+See docs/P0_ROUTE_RENDERING.md for defects, evidence and permanent regressions.
+No API/schema/dependency/auth-policy or production-setting change. Exact staged
+export, development/production browser runs, full PostgreSQL 17.12 acceptance,
+concurrent peer isolation and hosted CI are required before delivery; final
+results and artifact identities are recorded externally. M-02 design and unrelated
+local operations notes remain preserved and excluded from the focused commit.

@@ -194,3 +194,31 @@ describe('canonical session commit protocol', () => {
   });
 
 });
+
+it.each(['{broken', JSON.stringify({ schema: 99 })])('allows an explicit login to recover corrupt storage %s', async (raw) => {
+  const { a, storage } = documents();
+  storage.setItem(sessionStorageKey, raw);
+  await login(a, 'recovered');
+  expect(a.read().credentials).toEqual(credentials('recovered'));
+});
+
+it('does not replace a peer login while corrupt-record recovery waits for its lock', async () => {
+  const { a, storage, locks } = documents();
+  storage.setItem(sessionStorageKey, '{broken');
+  const peer = { schema: 1, epoch: 'peer-epoch', revision: 1, pendingLogin: null, credentials: credentials('peer') };
+  locks.request.mockImplementationOnce(async (_name, _options, work) => {
+    storage.setItem(sessionStorageKey, JSON.stringify(peer));
+    return work();
+  });
+  await expect(a.beginLogin()).rejects.toMatchObject({ sessionExpired: true });
+  expect(a.read()).toEqual(peer);
+});
+
+it('does not erase a peer record installed between corrupt detection and recovery capture', async () => {
+  const { a, storage } = documents();
+  const peer = { schema: 1, epoch: 'peer-epoch', revision: 1, pendingLogin: null, credentials: credentials('peer') };
+  storage.setItem(sessionStorageKey, JSON.stringify(peer));
+  vi.spyOn(storage, 'getItem').mockReturnValueOnce('{broken');
+  await expect(a.beginLogin()).rejects.toMatchObject({ sessionExpired: true });
+  expect(a.read()).toEqual(peer);
+});

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ConfigProvider } from 'antd';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { AuthProvider } from './AuthContext.jsx';
 import { useAuth } from './useAuth.js';
 import { CandidateRegistrationPage, LoginPage, RecruiterRegistrationPage } from './AuthPages.jsx';
@@ -104,3 +104,15 @@ describe('authentication screens', () => {
     expect(readAuth()).toBeNull();
   });
 });
+
+it('preserves company selection and hash when returning from recruiter login', async () => {
+  const user = userEvent.setup();
+  authApi.login.mockResolvedValueOnce({ access: 'access-token', refresh: 'refresh-token', user: { id: 'return-recruiter', role: 'recruiter' } });
+  render(<ConfigProvider><AuthProvider><MemoryRouter initialEntries={[{ pathname: '/login', state: { from: { pathname: '/recruiter/jobs', search: '?company=selected-company', hash: '#job-list' } } }]}><Routes><Route path="/login" element={<LoginPage />} /><Route path="/recruiter/jobs" element={<ReturnLocation />} /><Route path="/recruiter" element={<p>Wrong return destination</p>} /></Routes></MemoryRouter></AuthProvider></ConfigProvider>);
+  await fill(user, 'Email address', 'return@example.test');
+  await fill(user, 'Password', 'Good-pass-42!');
+  await user.click(screen.getByRole('button', { name: 'Log in' }));
+  expect(await screen.findByText('/recruiter/jobs?company=selected-company#job-list')).toBeInTheDocument();
+});
+
+function ReturnLocation() { const location = useLocation(); return <p>{location.pathname}{location.search}{location.hash}</p>; }

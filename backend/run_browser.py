@@ -200,8 +200,30 @@ def main(*, backend_only=False):
                     "user": {"id": str(candidate.pk), "role": candidate.role},
                 }
             os.environ["E2E_SKILLS_ACCOUNTS"] = json.dumps(skills_accounts)
+            from config.route_fixtures import route_fixtures
+
+            os.environ["E2E_ROUTE_FIXTURES"] = json.dumps(route_fixtures(run))
             connection.close()
             identities = {}
+            if os.environ.get("E2E_PRODUCTION") == "1":
+                os.environ["E2E_DIST"] = str(Path(directory) / "dist")
+                build = resources.spawn(
+                    [
+                        sys.executable,
+                        str(ROOT / "e2e_exec.py"),
+                        "npm",
+                        "run",
+                        "build",
+                        "--",
+                        "--outDir",
+                        os.environ["E2E_DIST"],
+                    ],
+                    start_new_session=True,
+                    cwd=ROOT.parent / "frontend",
+                    env={**os.environ, "VITE_API_BASE_URL": f"{backend_url}/api/v1"},
+                )
+                if build.wait():
+                    raise RuntimeError("Production browser build failed")
             for role, listener, command, cwd in (
                 ("backend", backend_socket, [sys.executable, str(ROOT / "e2e_server.py")], ROOT),
                 (
