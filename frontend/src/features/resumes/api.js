@@ -5,7 +5,7 @@ export const resumeApi = {
   upload: (file, config) => { const data = new FormData(); data.append('file', file); return http.put('/candidates/me/resume/', data, { ...config, headers: { ...config?.headers, 'Content-Type': undefined } }).then(({ data }) => data.resume); },
   remove: (config) => http.delete('/candidates/me/resume/', config),
   download: (config) => download('/candidates/me/resume/download/', config),
-  applicantDownload: (jobId, applicationId) => download(`/jobs/${jobId}/applications/${applicationId}/resume/`),
+  applicantDownload: (jobId, applicationId, config) => download(`/jobs/${jobId}/applications/${applicationId}/resume/`, config),
 };
 
 async function download(path, config) {

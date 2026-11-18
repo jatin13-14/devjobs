@@ -62,7 +62,7 @@ it('downloads through the application scope and displays revoked access errors',
   resumeApi.applicantDownload.mockRejectedValue(new Error());
   applicant(true);
   fireEvent.click(await screen.findByRole('button', { name: 'Download resume' }));
-  await waitFor(() => expect(resumeApi.applicantDownload).toHaveBeenCalledWith('job-1', 'app-1'));
+  await waitFor(() => expect(resumeApi.applicantDownload).toHaveBeenCalledWith('job-1', 'app-1', expect.objectContaining({ _assertAuthority: expect.any(Function) })));
   expect(await screen.findByText('Resume action failed.')).toBeInTheDocument();
 });
 

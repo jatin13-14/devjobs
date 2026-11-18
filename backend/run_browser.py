@@ -1,5 +1,6 @@
 """Own a fresh container, verify cluster identity, run E2E, then remove only it."""
 
+import argparse
 import json
 import os
 import secrets
@@ -25,7 +26,7 @@ def stop_run(signum, frame):
     raise SystemExit(128 + signum)
 
 
-def main():
+def main(*, backend_only=False):
     signal.signal(signal.SIGTERM, stop_run)
     signal.signal(signal.SIGINT, stop_run)
     if not shutil.which("docker"):
@@ -67,7 +68,10 @@ def main():
                     "POSTGRES_USER=e2e_owner",
                     "--env",
                     "POSTGRES_DB=devjobs_e2e_disposable",
-                    "postgres:17.5",
+                    (
+                        "postgres:17.12-bookworm@"
+                        "sha256:40865bc877a289da75963d97d72b59633f639fc5af7a4e856bfa3714cae5b536"
+                    ),
                     env=environment,
                 )
             with uninterrupted():
@@ -142,9 +146,10 @@ def main():
 
             from config.e2e_safety import verify_connection
 
-            verify_connection(connection, os.environ)
+            server_version = verify_connection(connection, os.environ)
             print(
                 f"Verified owned container={container[:12]} run={run} "
+                f"server_version_num={server_version} "
                 f"cluster={identifier} database=devjobs_e2e_disposable "
                 f"host=127.0.0.1:{binding['HostPort']} PostgreSQL=17",
                 flush=True,
@@ -166,6 +171,9 @@ def main():
                 [sys.executable, "-m", "pytest", "--ds=config.settings.e2e"],
             ):
                 checked(command)
+            if backend_only:
+                print("Backend-only owned PostgreSQL verification PASS", flush=True)
+                return 0
             from apps.accounts.models import User
 
             email = f"e2e-admin-{run}@example.test"
@@ -262,4 +270,10 @@ def main():
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--backend-only",
+        action="store_true",
+        help="Verify owned PostgreSQL without browser fixtures or services",
+    )
+    raise SystemExit(main(backend_only=parser.parse_args().backend_only))

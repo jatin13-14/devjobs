@@ -9,7 +9,7 @@ import { AuthContext } from '../../auth/authContext.js';
 import { CompanyJobsPage, JobEditorPage, RecruiterJobDetailPage, RecruiterApplicantDetailPage, RecruiterApplicantsPage, RecruiterDashboardPage } from './RecruiterPages.jsx';
 import { jobsApi } from '../services/api.js';
 
-vi.mock('../services/api.js', () => ({ jobsApi: { recruiterProfile: vi.fn(), recruiterCompanies: vi.fn(), company: vi.fn(), companyJobs: vi.fn(), companyJob: vi.fn(), updateJob: vi.fn(), publishJob: vi.fn(), closeJob: vi.fn(), recruiterApplications: vi.fn(), recruiterApplication: vi.fn(), updateApplicationStatus: vi.fn() }, apiMessage: (error) => error.response?.data?.detail || 'Something went wrong. Please try again.' }));
+vi.mock('../services/api.js', () => ({ jobsApi: { recruiterProfile: vi.fn(), recruiterCompanies: vi.fn(), company: vi.fn(), companyApplicationOverview: vi.fn(), companyJobs: vi.fn(), companyJob: vi.fn(), updateJob: vi.fn(), publishJob: vi.fn(), closeJob: vi.fn(), recruiterApplications: vi.fn(), recruiterApplication: vi.fn(), updateApplicationStatus: vi.fn() }, apiMessage: (error) => error.response?.data?.detail || 'Something went wrong. Please try again.' }));
 
 it('does not reveal the previous user’s company jobs after an unaffiliated identity resolves', async () => {
   vi.resetAllMocks();
@@ -140,7 +140,7 @@ it('uses total count rather than loaded page length and preserves an explicit co
   jobsApi.companyJobs.mockResolvedValue({ results: [] });
   await mount('/recruiter?company=last', <RecruiterDashboardPage />);
   expect(await screen.findByText('Active membership · ADMIN')).toBeInTheDocument();
-  expect(jobsApi.companyJobs).toHaveBeenCalledWith('last');
+  expect(jobsApi.companyJobs).toHaveBeenCalledWith('last', { page: 1, page_size: 1, status: 'PUBLISHED' });
   expect(jobsApi.companyJobs).not.toHaveBeenCalledWith('first');
   expect(screen.getByRole('combobox', { name: 'Company' })).toBeInTheDocument();
 });
@@ -284,4 +284,35 @@ describe('identity-owned recruiter job data', () => {
     const absent = () => { expect(screen.queryByText('Private draft')).not.toBeInTheDocument(); expect(screen.queryByDisplayValue('Private draft')).not.toBeInTheDocument(); expect(screen.queryByText('Private candidate')).not.toBeInTheDocument(); };
     absent(); await act(async () => lookup.resolve(membership(null))); absent();
   });
+});
+
+it('revokes job management on a known 403 and revalidates membership', async () => {
+  vi.resetAllMocks();
+  await writeAuth({ access: 'test-access', refresh: 'test-refresh', user: { id: 'A', role: 'recruiter' } });
+  jobsApi.recruiterCompanies.mockResolvedValueOnce(membership('OWNER')).mockResolvedValue(membership('MEMBER'));
+  jobsApi.companyJob.mockResolvedValue(draft());
+  jobsApi.publishJob.mockRejectedValue({ response: { status: 403, data: { detail: 'Management denied' } } });
+  render(<AuthProvider><MemoryRouter initialEntries={['/recruiter/jobs/job-1?company=company-1']}><Routes><Route path="/recruiter/jobs/:id" element={<RecruiterJobDetailPage />} /></Routes></MemoryRouter></AuthProvider>);
+  fireEvent.click(await screen.findByRole('button', { name: 'Publish' }));
+  await waitFor(() => expect(screen.getAllByRole('button', { name: /^(Yes|OK)$/ })).toHaveLength(1));
+  fireEvent.click(screen.getByRole('button', { name: /^(Yes|OK)$/ }));
+  await waitFor(() => expect(jobsApi.recruiterCompanies).toHaveBeenCalledTimes(2));
+  await screen.findByRole('heading', { name: 'Private draft' });
+  expect(screen.queryByRole('button', { name: 'Publish' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+});
+
+it('retires overview activity on known denial and revalidates the company role', async () => {
+  vi.resetAllMocks();
+  let role = 'OWNER';
+  jobsApi.recruiterProfile.mockResolvedValue({ name: 'Synthetic recruiter' });
+  jobsApi.recruiterCompanies.mockImplementation(() => Promise.resolve({ count: 1, results: [{ id: 'company-1', name: 'Summary company', role }] }));
+  jobsApi.companyJobs.mockResolvedValue({ count: 200, results: [{ id: 'one' }], next: 'untrusted' });
+  jobsApi.company.mockResolvedValue({});
+  jobsApi.companyApplicationOverview.mockImplementation(async () => { role = 'MEMBER'; throw { response: { status: 403, data: { detail: 'Management denied' } } }; });
+  await mount('/recruiter?company=company-1', <RecruiterDashboardPage />);
+  expect(await screen.findByText('Active membership · MEMBER')).toBeInTheDocument();
+  expect(screen.getByText('Applicant activity requires an OWNER or ADMIN membership.')).toBeInTheDocument();
+  expect(jobsApi.companyApplicationOverview).toHaveBeenCalledTimes(1);
+  expect(jobsApi.recruiterApplications).not.toHaveBeenCalled();
 });

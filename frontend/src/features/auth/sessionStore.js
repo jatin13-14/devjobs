@@ -45,9 +45,10 @@ export function createSessionStore({ storage, locks, events, randomUUID }) {
     if ((current?.epoch ?? null) !== expected) throw new SessionExpiredError();
     return current;
   }
-  function coordinated(work, mode = 'exclusive') {
+  function coordinated(work, mode = 'exclusive', signal) {
     if (typeof locks?.request !== 'function') return Promise.reject(new SessionExpiredError('Browser session locking unavailable'));
-    return locks.request(lockName, { mode }, work);
+    signal?.throwIfAborted();
+    return locks.request(lockName, { mode, ...(signal ? { signal } : {}) }, () => { signal?.throwIfAborted(); return work(); });
   }
   function notify() { for (const subscriber of subscribers) subscriber(); }
   function persist(record) {
@@ -123,26 +124,26 @@ export function createSessionStore({ storage, locks, events, randomUUID }) {
     },
     revoke(permit) { const identity = permits.get(permit); if (identity) identity.live = false; },
     assertPermit,
-    dispatch(permit, transport) {
+    dispatch(permit, transport, signal) {
       assertPermit(permit);
       // The transport starts while a shared lock excludes credential commits.
       // Its response must not retain the lock (refresh needs an exclusive lock).
-      return coordinated(() => ({ response: transport(assertPermit(permit).credentials) }), 'shared')
+      return coordinated(() => ({ response: transport(assertPermit(permit).credentials) }), 'shared', signal)
         .then(({ response }) => response);
     },
-    refresh(permit, expectedRevision, credentials) {
+    refresh(permit, expectedRevision, credentials, signal) {
       return coordinated(() => {
         const current = assertPermit(permit);
         if (current.revision !== expectedRevision) throw new SessionExpiredError('Refresh result superseded');
         return persist({ ...current, revision: current.revision + 1, credentials: { ...current.credentials, ...credentials } });
-      });
+      }, 'exclusive', signal);
     },
-    expire(permit, expectedRevision) {
+    expire(permit, expectedRevision, options = {}) {
       return coordinated(() => {
         const current = assertPermit(permit);
         if (current.revision !== expectedRevision) throw new SessionExpiredError('Refresh result superseded');
         return replace(current, null);
-      });
+      }, 'exclusive', options.signal);
     },
   };
 }

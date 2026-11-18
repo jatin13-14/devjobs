@@ -15,7 +15,7 @@ vi.mock('antd', async (importOriginal) => {
 });
 const identity = vi.hoisted(() => ({ user: { id: 'self' } }));
 vi.mock('../auth/useAuth.js', () => ({ useAuth: () => identity }));
-vi.mock('../auth/api.js', () => ({ http: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), delete: vi.fn() } }));
+vi.mock('../auth/api.js', () => ({ captureRequestOwnership: () => ({}), assertRequestOwnership: () => {}, http: { get: vi.fn(), patch: vi.fn(), post: vi.fn(), delete: vi.fn() } }));
 vi.mock('../jobs/services/api.js', () => ({ jobsApi: { company: vi.fn(), recruiterCompanies: vi.fn() }, apiMessage: () => 'Request failed' }));
 afterEach(() => { cleanup(); vi.resetAllMocks(); identity.user = { id: 'self' }; retained.forms = []; retained.memberActions = []; });
 function mount() { render(<MemoryRouter initialEntries={['/recruiter/companies/company']}><Routes><Route path="/recruiter/companies/:id" element={<CompanyPage />} /></Routes></MemoryRouter>); }
@@ -188,7 +188,7 @@ it('requests bounded member pages and never follows server navigation URLs', asy
   mount();
   fireEvent.click(await screen.findByRole('button', { name: 'Next page' }));
   expect(await screen.findByText('Last member · MEMBER · INVITED')).toBeInTheDocument();
-  expect(http.get).toHaveBeenLastCalledWith('/companies/company/members/', { params: { pagination: 'page', page: 2, page_size: 20 } });
+  expect(http.get).toHaveBeenLastCalledWith('/companies/company/members/', expect.objectContaining({ params: { pagination: 'page', page: 2, page_size: 20 }, _assertAuthority: expect.any(Function) }));
   expect(screen.getByRole('button', { name: 'Previous page' })).toBeEnabled();
 });
 it.each(['OWNER', 'ADMIN'])('only OWNER sees the dedicated eligible transfer action: %s', async (role) => {

@@ -18,6 +18,7 @@ function CompanyEditor() {
   const { id } = useParams(); const navigate = useNavigate(); const { user } = useAuth(); const [form] = Form.useForm(); const [memberForm] = Form.useForm();
   const authorization = useCompanyMembership(id);
   const retryAuthorization = authorization.retry;
+  const execute = authorization.execute;
   const membership = authorization.membership;
   const canManage = authorization.canManage;
   const [loading, setLoading] = useState(true); const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [actionError, setActionError] = useState(''); const [members, setMembers] = useState([]); const [page, setPage] = useState(1); const [nextPage, setNextPage] = useState(false); const [total, setTotal] = useState(0);
@@ -46,7 +47,7 @@ function CompanyEditor() {
           if (!live) return;
           form.setFieldsValue(company);
           if (canManage) {
-            const response = await http.get(`/companies/${id}/members/`, { params: { pagination: 'page', page, page_size: 20 } });
+            const response = await execute((config) => http.get(`/companies/${id}/members/`, { ...config, params: { pagination: 'page', page, page_size: 20 } }));
             if (!live) return;
             setMembers(response.data.results || response.data);
             setNextPage(Boolean(response.data.next)); setTotal(response.data.count ?? response.data.length);
@@ -56,7 +57,7 @@ function CompanyEditor() {
       finally { if (live) { setLoading(false); setBusy(false); } }
     })();
     return () => { live = false; };
-  }, [id, user?.id, authorization.loading, authorization.status, membership, canManage, form, memberForm, page]);
+  }, [id, user?.id, authorization.loading, authorization.status, membership, canManage, form, memberForm, page, execute]);
   const perform = async (operation) => {
     const permit = actions.current;
     if (!permit.allowed || permit !== actionIdentity) return;

@@ -1,9 +1,10 @@
 import axios from 'axios';
+import { REFRESH_TIMEOUT, REQUEST_TIMEOUT, withRequestDeadline } from './requestDeadline.js';
 import { createSessionStore, SessionExpiredError } from './sessionStore.js';
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-const client = axios.create({ baseURL, headers: { 'Content-Type': 'application/json' } });
-export const plainHttp = axios.create({ baseURL, headers: { 'Content-Type': 'application/json' } });
+const client = axios.create({ baseURL, timeout: REQUEST_TIMEOUT, headers: { 'Content-Type': 'application/json' } });
+export const plainHttp = axios.create({ baseURL, timeout: REFRESH_TIMEOUT, headers: { 'Content-Type': 'application/json' } });
 export const sessionStore = createSessionStore({
   storage: window.localStorage, events: window,
   locks: { request: (...args) => window.navigator.locks?.request(...args) ?? Promise.reject(new SessionExpiredError('Browser session locking unavailable')) },
@@ -47,6 +48,7 @@ function bind(config = {}) {
 export const captureRequestOwnership = () => bind();
 function assertSession(config, cause) {
   try {
+    config.signal?.throwIfAborted();
     config._assertAuthority?.();
     if (config._publicAuth) return;
     if (config._authPermit) sessionStore.assertPermit(config._authPermit.permit);
@@ -60,12 +62,12 @@ const methods = new Set(['get', 'delete', 'head', 'options', ...bodyMethods]);
 function initiate(work) { try { return work(); } catch (error) { return Promise.reject(error); } }
 export const http = new Proxy(client, {
   apply(target, thisArg, args) {
-    return initiate(() => { const [url, config] = args; return target(typeof url === 'string' ? { ...bind(config), url } : bind(url)); });
+    return initiate(() => { const [url, config] = args; const request = bind(typeof url === 'string' ? { ...config, url } : url); return withRequestDeadline(request, (owned) => target(owned)); });
   },
   get(target, property) {
     if (property === 'request') return (config) => http(config);
     if (methods.has(property)) return (url, dataOrConfig, config) => initiate(() => bodyMethods.has(property)
-      ? target[property](url, dataOrConfig, bind(config)) : target[property](url, bind(dataOrConfig)));
+      ? withRequestDeadline(bind(config), (owned) => target[property](url, dataOrConfig, owned)) : withRequestDeadline(bind(dataOrConfig), (owned) => target[property](url, owned)));
     return Reflect.get(target, property);
   },
 });
@@ -84,7 +86,7 @@ client.interceptors.request.use((config) => {
       else delete request.headers.Authorization;
       return transport(request);
     };
-    if (request._authPermit) return sessionStore.dispatch(request._authPermit.permit, send);
+    if (request._authPermit) return sessionStore.dispatch(request._authPermit.permit, send, request.signal);
     assertSession(request);
     return send(null);
   };
@@ -101,7 +103,7 @@ client.interceptors.response.use((response) => {
   const record = sessionStore.assertPermit(request._authPermit.permit);
   const auth = record.credentials;
   if (!auth.refresh) {
-    await sessionStore.expire(request._authPermit.permit, record.revision);
+    await withRequestDeadline({}, ({ signal }) => sessionStore.expire(request._authPermit.permit, record.revision, { signal }), 5_000);
     window.dispatchEvent(new Event('devjobs:logout'));
     throw error;
   }
@@ -113,16 +115,17 @@ client.interceptors.response.use((response) => {
       // Refresh has its own asynchronous interceptor queue. Revalidate the
       // originating permit and token revision at its actual transport boundary.
       const refreshTransport = axios.getAdapter(plainHttp.defaults.adapter);
-      flight.promise = plainHttp.post('/auth/token/refresh/', { refresh: auth.refresh }, {
+      flight.promise = withRequestDeadline({}, (deadlineConfig) => plainHttp.post('/auth/token/refresh/', { refresh: auth.refresh }, {
+        ...deadlineConfig,
         adapter: (config) => sessionStore.dispatch(request._authPermit.permit, () => {
           if (sessionStore.assertPermit(request._authPermit.permit).revision !== record.revision) {
             throw new SessionExpiredError('Refresh result superseded');
           }
           return refreshTransport(config);
-        }),
+        }, config.signal),
       }).then(({ data }) =>
-        sessionStore.refresh(request._authPermit.permit, record.revision, { access: data.access, refresh: data.refresh || auth.refresh })
-      ).finally(() => { if (refreshFlight === flight) refreshFlight = null; });
+        sessionStore.refresh(request._authPermit.permit, record.revision, { access: data.access, refresh: data.refresh || auth.refresh }, deadlineConfig.signal)
+      ), REFRESH_TIMEOUT).finally(() => { if (refreshFlight === flight) refreshFlight = null; });
       refreshFlight = flight;
     }
     await refreshFlight.promise;
@@ -132,7 +135,7 @@ client.interceptors.response.use((response) => {
     assertSession(request, error);
     // A late refresh failure must not expire a newer same-session token pair.
     if (sessionStore.assertPermit(request._authPermit.permit).credentials.refresh === auth.refresh) {
-      await sessionStore.expire(request._authPermit.permit, record.revision);
+      await withRequestDeadline({}, ({ signal }) => sessionStore.expire(request._authPermit.permit, record.revision, { signal }), 5_000);
       window.dispatchEvent(new Event('devjobs:logout'));
     }
     throw refreshError;

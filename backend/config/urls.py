@@ -20,6 +20,7 @@ from apps.applications.api import (
     JobApplicationsView,
     RecruiterApplicationStatusView,
 )
+from apps.applications.overview import CompanyApplicationOverviewView
 from apps.candidates.api import CandidateProfileView, CandidateSkillDetailView, CandidateSkillsView
 from apps.candidates.resume_api import (
     ApplicantResumeDownloadView,
@@ -103,6 +104,11 @@ urlpatterns = [
     path("api/v1/recruiters/me/profile/", RecruiterProfileView.as_view(), name="recruiter-profile"),
     path("api/v1/recruiters/me/companies/", RecruiterCompaniesView.as_view(), name="recruiter-companies"),
     path("api/v1/companies/", CompanyCollectionView.as_view(), name="company-collection"),
+    path(
+        "api/v1/companies/<uuid:company_id>/application-overview/",
+        CompanyApplicationOverviewView.as_view(),
+        name="company-application-overview",
+    ),
     path("api/v1/companies/<uuid:company_id>/", CompanyDetailView.as_view(), name="company-detail"),
     path(
         "api/v1/companies/<uuid:company_id>/members/",

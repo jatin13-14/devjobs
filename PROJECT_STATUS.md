@@ -2445,3 +2445,138 @@ to avoid changing the tested tree. One local commit is conditional on every
 required gate passing on that snapshot. Unrelated operations notes are excluded
 from staging and preserved. F-03/F-04/M-06 remain outside this repair; no Stage 2C,
 push, merge, deployment or PR modification.
+
+
+## Stage 2B.5 F-03 response ownership — 2026-11-16
+
+Verified requested baseline branch/HEAD/tree. Controlled frozen-baseline route
+regression reproduced application A overwriting B after B completed. Candidate
+application list/detail now use view/session and per-request ownership, cancellation
+and guarded completion/error/loading updates. Withdrawal callbacks retain their
+originating authority; current success triggers an owned refresh. Detail errors
+provide Retry. See docs/STAGE_2B5_RESPONSE_ORDERING.md for regression coverage,
+commands and limitations. No API/schema/dependency/authentication-policy change.
+Final exact-export acceptance identities/results belong in the external delivery
+manifest; commit is conditional on passing all gates. Unrelated operations notes
+remain excluded. F-04/F-12 and subsequent milestones are pending.
+
+
+## Stage 2B.5 F-04 permission invalidation — 2026-11-16
+
+Baseline publish-denial regression confirms stale controls and missing membership
+revalidation. Membership resolution now owns an invalidatable view/session permit;
+known 403 retires it synchronously, revalidates server membership, clears dependent
+management screens and rejects retained/queued operations. Visible workspaces
+refresh every 60 seconds; focus/visibility return checks after five seconds of
+freshness. Repeated denials are bounded to prevent revalidation loops. No instant
+external-revocation guarantee. See docs/STAGE_2B5_PERMISSION_INVALIDATION.md.
+No backend/public API/schema/dependency/authentication-policy change. Exact export
+acceptance remains mandatory before commit; results and identities are external.
+F-12 and later milestones remain pending; unrelated operations notes preserved.
+
+
+## Stage 2B.5 F-12 concurrent skill creation — 2026-11-16
+
+Synchronized disposable PostgreSQL 17 API regressions reproduced HTTP 500 when
+a canonical skill winner commits between another request's lookup and model
+validation. Both same/different candidates and ASCII/Unicode cases fail baseline.
+The transactional candidate service recovers only the exact committed winner
+from a name uniqueness validation error, preserves all constraints and rolls
+back unexpected association failures. Seven focused concurrency/service tests
+pass; see docs/STAGE_2B5_SKILL_CONCURRENCY.md. No API shape/schema/migration/
+dependency/authentication-policy change. Exact-export gates remain required
+before commit; final identities/results are external. Unrelated notes preserved.
+Hosted frontend profile-test timeouts are a separate reliability follow-up.
+
+
+## F-02 hosted profile test reliability — 2026-11-16
+
+Hosted F-03/F-04 frontend jobs exposed five-second candidate profile integration
+test timeouts despite local acceptance passing; hosted F-03 Chromium passed.
+A disposable instrumented baseline reproduced timeout under concurrent load.
+Role queries scope to the profile form, skills card and confirmation popup.
+A later loaded run still timed out, so save and skill lifecycle are split into
+focused full-page scenarios in both ordinary and Strict Mode. All assertions,
+controlled mutation/refresh observations and Strict Mode coverage remain. No
+timeout increase, sleeps, skips or production behavior changes. A further loaded
+run exposed resource contention in the F-04 UI test; Vitest now has a two-worker
+DOM budget, retaining parallel files and explicit request/browser concurrency.
+See docs/STAGE_2B5_TEST_RELIABILITY.md for evidence and attribution limits.
+Exact-export local acceptance is required before commit; hosted CI resolution
+requires a subsequently observed successful run. Unrelated notes preserved.
+
+
+## M-09 request and refresh deadlines — 2026-11-16
+
+Axios defaults previously allowed indefinite waits. Requests now default to 30s,
+shared refresh to 10s and failure-expiry coordination to 5s, including interceptor
+and lock queues. Retry retains the original deadline. Canceled queue callbacks
+cannot dispatch or commit credentials; shared refresh cleanup permits recovery.
+Timeout does not automatically replay mutations or establish server outcome.
+Existing epoch/permit/revision checks and JWT policy remain. Twenty regressions
+and a native Chromium lock-queue scenario are added; see
+docs/STAGE_2B5_REQUEST_DEADLINES.md. No public API/schema/dependency/backend
+or production settings change. Exact-export acceptance is mandatory before
+commit; final results and identities are external. Unrelated notes preserved.
+
+M-09 recovery review reproduced and repaired dispatch at an already exhausted
+deadline. The original deadline is checked synchronously before operation entry.
+Additional tests exercise actual retry budgets, shared consumer cancellation,
+replacement/logout/provider retirement and stalled refresh interceptors.
+All exact-export acceptance gates remain required before commit.
+
+
+## Stage 2C bounded collection consumers — 2026-11-16
+
+Audited production frontend collection requests. Candidate dashboard was the last
+legacy own-skills array consumer; it now requests a one-row opt-in page for skill
+presence and three-row application/job previews. Existing completion and display
+semantics remain. Profile/skills, company discovery/membership and always-paged
+lists already use bounded responses. Legacy backend arrays remain unchanged until
+an approved retirement policy exists. M-06 external compatibility/count/offset
+costs and M-07 exhaustive recruiter aggregation remain open. See
+STAGE_2C_COLLECTION_CONSUMERS.md; exact-export acceptance is required before commit.
+No API/schema/migration/dependency/production-setting change. Unrelated operations
+notes are preserved and excluded from staging.
+
+
+## CI isolation and action integrity — 2026-11-16
+
+Recovered and reviewed the existing unstaged workflow/runner hardening. Action
+pins match upstream tags, checkout no longer persists credentials, contents are
+read-only and job lifetimes are bounded. Backend CI delegates to the existing
+owned PostgreSQL runner's backend-only mode, replacing the fixed devjobs_test
+service and returning before browser fixtures/services. Full browser mode stays
+intact. See docs/CI_ISOLATION_HARDENING.md. Exact-export acceptance and a live
+backend-only run are required before commit. Unrelated operations notes remain
+preserved. No API/schema/dependency/deployment/production-throttling change.
+
+
+## M-07 bounded recruiter overview — 2026-11-16
+
+Replaced exhaustive dashboard job/applicant traversal with a one-row published
+job page/count and an additive, read-only company application summary. Existing
+OWNER/ADMIN authorization gates the summary; MEMBER never requests it. SQL
+aggregates totals/seven local calendar-day counts and materializes only three
+recent applicant records with minimal fields. Seven PostgreSQL tests pass,
+including six queries at 1/20/50 rows, permissions/revocation, scoping and DST.
+Frontend ownership/error/replacement tests and real-browser totals/no-traversal
+checks are added. See M07_RECRUITER_OVERVIEW.md, API_CONVENTIONS.md and OpenAPI.
+No existing public contract, auth policy, schema, dependency or production setting
+changes. Exact-export acceptance is required before commit; results/identities
+remain external. M-06 compatibility retirement and operational release gates
+remain open. Unrelated operations notes are preserved and excluded from staging.
+
+
+## Patched disposable PostgreSQL baseline — 2026-11-16
+
+Reviewed upstream PostgreSQL 17.12 security release (2026-11-12) and official
+Bookworm multi-platform manifest. The owned runner now pins its full digest and
+SQL identity checks reject PostgreSQL 17 below 17.12 as well as other majors.
+Version-floor regressions retain all existing database/cluster/port/ownership
+checks. See POSTGRESQL_RUNNER_SECURITY.md and E2E_ISOLATION.md. Exact-export
+acceptance on fresh PostgreSQL 17.12 clusters is mandatory before commit.
+No existing database, volume, legacy test identity, schema, production setting,
+JWT or throttle change. Production upgrade/backup/restore and infrastructure
+release gates remain operator-owned; no deployment or release approval is implied.
+Unrelated operations notes are preserved and excluded from staging.

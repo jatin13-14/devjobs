@@ -662,6 +662,74 @@ paths:
           description: Missing refresh token.
         '401':
           description: Invalid or expired refresh token.
+  /api/v1/companies/{company_id}/application-overview/:
+    get:
+      summary: Read bounded company application totals and recent applicants
+      description: >-
+        Requires an active OWNER or ADMIN membership in a non-suspended company.
+        Counts all company applications including terminal statuses. Seven local
+        calendar-day buckets include today; UTC is the default. Only three recent
+        rows are returned, ordered by applied_at descending then id. Counts and
+        recent rows may reflect concurrent writes between the two SQL statements.
+      operationId: getCompanyApplicationOverview
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: company_id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: time_zone
+          in: query
+          schema: { type: string, default: UTC, minLength: 1, maxLength: 128 }
+          description: IANA time zone, for example America/New_York.
+      responses:
+        '200':
+          description: Bounded summary; no cover letters, skills, resumes or credentials.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [time_zone, total, submitted, reviewing, days, recent]
+                properties:
+                  time_zone: { type: string }
+                  total: { type: integer, minimum: 0 }
+                  submitted: { type: integer, minimum: 0 }
+                  reviewing: { type: integer, minimum: 0 }
+                  days:
+                    type: array
+                    minItems: 7
+                    maxItems: 7
+                    items:
+                      type: object
+                      required: [date, count]
+                      properties:
+                        date: { type: string, format: date }
+                        count: { type: integer, minimum: 0 }
+                  recent:
+                    type: array
+                    maxItems: 3
+                    items:
+                      type: object
+                      required: [id, applied_at, job, candidate]
+                      properties:
+                        id: { type: string, format: uuid }
+                        applied_at: { type: string, format: date-time }
+                        job:
+                          type: object
+                          required: [id, title]
+                          properties:
+                            id: { type: string, format: uuid }
+                            title: { type: string }
+                        candidate:
+                          type: object
+                          required: [full_name, professional_headline]
+                          properties:
+                            full_name: { type: string }
+                            professional_headline: { type: string }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { description: Authentication required. }
+        '403': { description: Active company OWNER or ADMIN required. }
+        '404': { description: Recruiter profile not found. }
   /api/v1/candidates/me/profile/:
     get:
       summary: Read the authenticated candidate profile

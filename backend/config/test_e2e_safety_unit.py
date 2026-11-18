@@ -33,15 +33,27 @@ class E2ESafetyTests(unittest.TestCase):
             with self.subTest(url=url), self.assertRaises(ImproperlyConfigured):
                 validate_environment({**self.env, "E2E_DATABASE_URL": url})
 
+    def test_postgresql_security_floor_and_major_version_are_enforced(self):
+        connection = MagicMock()
+        cursor = connection.cursor.return_value.__enter__.return_value
+        for version in (170000, 170005, 170011, 160016, 180000):
+            cursor.fetchone.return_value = ("devjobs_e2e_disposable", 5432, version, "12345")
+            with self.subTest(version=version), self.assertRaises(ImproperlyConfigured):
+                verify_connection(connection, self.env)
+        for version in (170012, 170013):
+            cursor.fetchone.return_value = ("devjobs_e2e_disposable", 5432, version, "12345")
+            with self.subTest(version=version):
+                self.assertEqual(verify_connection(connection, self.env), version)
+
     def test_actual_cluster_identity_checked_independently(self):
         connection = MagicMock()
         cursor = connection.cursor.return_value.__enter__.return_value
-        cursor.fetchone.return_value = ("devjobs_e2e_disposable", 5432, 170005, "12345")
+        cursor.fetchone.return_value = ("devjobs_e2e_disposable", 5432, 170012, "12345")
         verify_connection(connection, self.env)
         for row in (
-            ("devjobs_test", 5432, 170005, "12345"),
-            ("devjobs_e2e_disposable", 5433, 170005, "12345"),
-            ("devjobs_e2e_disposable", 5432, 170005, "different-cluster"),
+            ("devjobs_test", 5432, 170012, "12345"),
+            ("devjobs_e2e_disposable", 5433, 170012, "12345"),
+            ("devjobs_e2e_disposable", 5432, 170012, "different-cluster"),
             ("devjobs_e2e_disposable", 5432, 180000, "12345"),
         ):
             cursor.fetchone.return_value = row

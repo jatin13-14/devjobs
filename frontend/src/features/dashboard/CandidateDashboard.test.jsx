@@ -10,7 +10,7 @@ vi.mock('../jobs/services/api.js', () => ({ jobsApi: { applications: vi.fn(), li
 vi.mock('../resumes/api.js', () => ({ resumeApi: { metadata: vi.fn() } }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 it('derives completion from actual fields including zero experience and renders actual recent applications', async () => {
-  http.get.mockImplementation((url) => Promise.resolve(url.includes('/skills/') ? { data: [] } : { data: { full_name: 'Casey', professional_headline: 'Engineer', country: 'GB', city: 'London', about: 'Developer', years_of_experience: 0 } }));
+  http.get.mockImplementation((url) => Promise.resolve(url.includes('/skills/') ? { data: { count: 0, results: [], next: null, previous: null } } : { data: { full_name: 'Casey', professional_headline: 'Engineer', country: 'GB', city: 'London', about: 'Developer', years_of_experience: 0 } }));
   jobsApi.list.mockResolvedValue({ results: [] });
   resumeApi.metadata.mockResolvedValue(null);
   jobsApi.applications.mockResolvedValue({ count: 24, next: 'page2', results: [{ id: 'one', status: 'SUBMITTED', applied_at: '2026-11-07T12:00:00Z', job: { title: 'Engineer', company: 'Example' } }] });
@@ -30,7 +30,7 @@ it('shows an actionable failure without fabricated statistics', async () => {
   expect(screen.queryByText('Applications')).not.toBeInTheDocument();
 });
 it('renders API job identity, skills and salary without fabricated jobs, bookmarks or experience years', async () => {
-  http.get.mockImplementation((url) => Promise.resolve({ data: url.includes('/skills/') ? [] : { full_name: 'Casey Developer' } }));
+  http.get.mockImplementation((url) => Promise.resolve({ data: url.includes('/skills/') ? { count: 0, results: [], next: null, previous: null } : { full_name: 'Casey Developer' } }));
   resumeApi.metadata.mockResolvedValue(null); jobsApi.applications.mockResolvedValue({ results: [] });
   jobsApi.list.mockResolvedValue({ results: [{ id: 'published-job', title: 'Platform Developer', company: { name: 'Example Company' }, location: 'London', country: 'GB', workplace_type: 'REMOTE', experience_level: 'MID', skills: ['Python'], salary_min: '50000', salary_max: '70000', salary_currency: 'GBP' }] });
   render(<MemoryRouter><CandidateDashboard /></MemoryRouter>);
@@ -40,4 +40,20 @@ it('renders API job identity, skills and salary without fabricated jobs, bookmar
   expect(screen.getByText('Python')).toBeInTheDocument();
   expect(screen.getByText('No applications yet.')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /save|bookmark/i })).not.toBeInTheDocument();
+});
+
+it('requests only bounded previews and recognizes skills without traversing their collection', async () => {
+  http.get.mockImplementation((url) => Promise.resolve({ data: url.includes('/skills/')
+    ? { count: 101, results: [{ id: 'first', name: 'python' }], next: 'https://untrusted.invalid/', previous: null }
+    : { full_name: 'Casey' } }));
+  resumeApi.metadata.mockResolvedValue(null);
+  jobsApi.applications.mockResolvedValue({ count: 200, results: [], next: 'more' });
+  jobsApi.list.mockResolvedValue({ count: 500, results: [], next: 'more' });
+  render(<MemoryRouter><CandidateDashboard /></MemoryRouter>);
+  expect(await screen.findByText('Welcome back, Casey 👋')).toBeInTheDocument();
+  expect(screen.getByText('22%')).toBeInTheDocument();
+  expect(http.get).toHaveBeenCalledWith('/candidates/me/skills/', { params: { pagination: 'page', page: 1, page_size: 1 } });
+  expect(http.get.mock.calls.filter(([url]) => url.includes('/skills/'))).toHaveLength(1);
+  expect(jobsApi.applications).toHaveBeenCalledWith({ page: 1, page_size: 3 });
+  expect(jobsApi.list).toHaveBeenCalledWith({ page: 1, page_size: 3 });
 });

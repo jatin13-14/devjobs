@@ -41,3 +41,30 @@ test('Strict Mode provider callbacks and queued protected transport lose authori
   await expect(page.getByText('b', { exact: true })).toBeVisible();
   expect(forbidden).toEqual([]);
 });
+
+test('request deadlines cancel native lock queues without dispatching a late mutation', async ({ page }) => {
+  const sends = [];
+  page.on('request', (request) => { if (request.url().includes('/deadline-forbidden/')) sends.push(request.method()); });
+  await page.route('**/deadline-harness', (route) => route.fulfill({ contentType: 'text/html', body: '<div id="root"></div><script type="module">import RefreshRuntime from "/@react-refresh"; RefreshRuntime.injectIntoGlobalHook(window); window.$RefreshReg$ = () => {}; window.$RefreshSig$ = () => (type) => type; window.__vite_plugin_react_preamble_installed__ = true; const { mount } = await import("/e2e/fixtures/provider-lifetime.jsx"); mount();</script>' }));
+  await page.goto('/deadline-harness');
+  await expect(page.getByText('anonymous')).toBeVisible();
+  const result = await page.evaluate(async () => {
+    const { writeAuth, sessionStore, http } = await import('/src/features/auth/api.js');
+    await writeAuth({ access: 'deadline-synthetic', refresh: 'deadline-synthetic-refresh', user: { id: 'deadline', role: 'recruiter' } });
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    const epoch = sessionStore.read().epoch;
+    let release, entered;
+    const ready = new Promise((resolve) => { entered = resolve; });
+    const held = navigator.locks.request('devjobs.auth.v2', async () => { entered(); await new Promise((resolve) => { release = resolve; }); });
+    await ready;
+    let code;
+    try { await http.patch('/deadline-forbidden/', { title: 'must not dispatch' }, { timeout: 100 }); }
+    catch (error) { code = error.code; }
+    finally { release(); await held; }
+    // Wait for all earlier shared-lock requests to have had a chance to run.
+    await navigator.locks.request('devjobs.auth.v2', () => {});
+    return { code, unchanged: sessionStore.read().epoch === epoch };
+  });
+  expect(result).toEqual({ code: 'ECONNABORTED', unchanged: true });
+  expect(sends).toEqual([]);
+});
