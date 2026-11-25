@@ -37,8 +37,8 @@ from apps.companies.api import (
 from apps.jobs.api import CompanyJobsView, JobCollectionView, JobDetailView, JobTransitionView
 from apps.jobs.saved_api import (
     CandidateSavedJobDetailView,
-    CandidateSavedJobsView,
     CandidateSavedJobStatusesView,
+    CandidateSavedJobsView,
 )
 from apps.moderation.api import CollectionView, DetailView, HistoryView, OverviewView
 from apps.recruiters.api import RecruiterCompaniesView, RecruiterProfileView
