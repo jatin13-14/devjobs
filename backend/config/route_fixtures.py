@@ -42,21 +42,6 @@ def route_fixtures(run):
                 "is_platform_admin": role == "platform",
             },
         }
-    # A second candidate exercises bookmark isolation in the real Chromium suite.
-    other_candidate = User.objects.create_user(
-        f"route-candidate-other-{run}@example.test", role="candidate"
-    )
-    CandidateProfile.objects.create(user=other_candidate, full_name="Route candidate other")
-    other_token = issue_session(other_candidate)
-    accounts["candidate_other"] = {
-        "access": str(other_token.access_token),
-        "refresh": str(other_token),
-        "user": {
-            "id": str(other_candidate.pk),
-            "role": "candidate",
-            "is_platform_admin": False,
-        },
-    }
     company = create_company(recruiter=profiles["owner"], name="Route audit company")
     for role in ("admin", "member"):
         CompanyMembership.objects.create(
