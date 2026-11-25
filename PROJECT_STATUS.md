@@ -1,5 +1,28 @@
 # Project status
 
+## P1-01 Saved Jobs — 2026-11-25 (feature branch; release acceptance pending)
+
+Post-MVP candidate bookmark feature on `feat/p1-01-saved-jobs`, draft PR #16,
+based on merged `main` at `53ed2fdf892f82305165aef2d9c639b338be595e`.
+The `jobs.SavedJob` model and `jobs.0004_savedjob` migration enforce one
+candidate-owned bookmark per job. Authenticated candidate-only APIs provide
+paginated private saved jobs, single-job saved status, idempotent save/unsave,
+and bounded (100-ID) saved-state batch lookup for public search cards.
+Saved collections exclude draft, closed, hidden, expired and
+suspended-company jobs without deleting existing bookmarks. Candidate job
+detail, search cards and the guarded Saved Jobs page support save/remove;
+bookmark UI remounts on authenticated identity changes. Tests cover
+authorization, candidate A/B isolation, status and expiry, idempotence,
+pagination and the real Chromium candidate save/reload/unsave/card journey
+in development and production modes. OpenAPI 3.1 and API conventions updated.
+
+**Verification:** Feature implementation and tests are committed on draft PR #16.
+Previously completed backend and frontend hosted checks passed on earlier
+feature heads; final exact-commit backend, frontend, Chromium, migration and
+OpenAPI validation must be verified before the PR is marked complete or
+merged. No staging, deployment, credentials, or production DB actions.
+
+
 ## Issue 11 integrated journeys — 2026-11-18
 
 Working-tree focused workflow PASS, development Chromium 85/85 PASS, and
