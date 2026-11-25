@@ -9,7 +9,7 @@
 - Save is **idempotent**: first request creates the bookmark (201), repeated request returns it (200). A database unique constraint on candidate/job prevents duplicates.
 - Unsave is **idempotent** (204), scoped to the current candidate. It works even if a formerly saved job has been closed/hidden or expired.
 - Saved-jobs list is private and paginated (20 items by default, 100 maximum), ordered by saved time (newest first). It only returns *currently public* jobs: published, non-hidden, non-suspended companies and unexpired deadlines. Existing hidden/closed/expired bookmarks remain stored but invisible until eligible again; unsave still works via direct detail endpoint.
-- Job detail offers Save/Remove saved job to candidate accounts. Candidate user menu links to `/candidate/saved-jobs`. Other users retain existing public job discovery.
+- Job discovery cards and job details offer Save/Remove saved job to candidate accounts. One bounded request fetches saved status for the visible result page; candidate user menu links to `/candidate/saved-jobs`. Other users retain existing public job discovery. The private bookmark UI remounts when authenticated identity changes.
 
 ## API
 
@@ -19,6 +19,7 @@
 | `/api/v1/candidates/me/saved-jobs/{job_id}/` | GET | 200 with `{saved:boolean}` for the authenticated candidate (no other candidate's state) |
 | same item endpoint | PUT | 201 on new bookmark or 200 if already saved; `{job,saved_at}`. 404 if job not public |
 | same item endpoint | DELETE | 204, including already-removed or currently hidden job |
+| `/api/v1/candidates/me/saved-jobs/statuses/?job_id={uuid}&job_id={uuid}` | GET | 200 with `{saved_job_ids:[uuid]}` for at most 100 supplied IDs, belonging only to caller |
 
 - All endpoints require an authenticated candidate; invalid or absent candidate profile is denied. Unexpected server errors use existing safe API/transport behavior.
 - No public job or recruiter API response is changed. The model is `jobs.SavedJob`, migration `jobs.0004_savedjob`, UUID identity and unique candidate/job constraint with index on candidate/saved_at.
@@ -29,7 +30,7 @@
 
 - Django check; `makemigrations --check --dry-run`; migration up on disposable PostgreSQL 17; all existing and added backend tests; Ruff.
 - Frontend lint/tests/build and targeted candidate bookmark UI tests. Enforced `npm audit` remains active.
-- Real Chromium: candidate save, reload/state persistence, saved list, unsave; candidate A/B isolation and recruiter denial; public visibility after hiding/closing/expiry.
+- Real Chromium development and production bundles: save from job detail and search card, reload/state persistence, saved list, unsave; candidate A/B isolation and recruiter denial. Backend regression covers public visibility after hiding/closing/expiry, suspended company and bounded pagination.
 - Verify exact PR commit and hosted checks before merge. Do not merge, deploy, or run on a real-user database without review.
 
 **Delivery status:** initial code and tests on feature branch; hosted/standalone verification pending. See PR discussion. This file is not a claim that release acceptance has passed.
