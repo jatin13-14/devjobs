@@ -33,3 +33,15 @@ it('reads private saved state and saves or removes only the given job', async ()
   expect(http.put).toHaveBeenCalledWith('/candidates/me/saved-jobs/job-id/', {}, config);
   expect(http.delete).toHaveBeenCalledWith('/candidates/me/saved-jobs/job-id/', config);
 });
+
+it('looks up multiple card statuses with repeated bounded job_id query keys', async () => {
+  const config = { signal: new AbortController().signal, _assertAuthority: vi.fn() };
+  const data = { saved_job_ids: ['first'] };
+  http.get.mockResolvedValue({ data });
+  expect(await jobsApi.savedJobStatuses(['first', 'second'], config)).toBe(data);
+  const [path, options] = http.get.mock.calls[0];
+  expect(path).toBe('/candidates/me/saved-jobs/statuses/');
+  expect(options.signal).toBe(config.signal);
+  expect(options._assertAuthority).toBe(config._assertAuthority);
+  expect(options.params.toString()).toBe('job_id=first&job_id=second');
+});
