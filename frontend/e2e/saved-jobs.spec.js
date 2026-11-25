@@ -55,5 +55,18 @@ test('candidate saves, reloads, unsaves and remains isolated from another candid
   await expect(page.getByText('No saved jobs yet')).toBeVisible();
   await page.reload();
   await expect(page.getByText('No saved jobs yet')).toBeVisible();
+
+  // Search cards use one candidate-only batched status read for the visible page.
+  await page.goto('/?search=Route%20audit%20engineer');
+  const card = page.locator('.job-card').filter({ hasText: 'Route audit engineer' });
+  await expect(card).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Save Route audit engineer' })).toBeEnabled();
+  await card.getByRole('button', { name: 'Save Route audit engineer' }).click();
+  await expect(card.getByRole('button', { name: 'Remove saved Route audit engineer' })).toBeVisible();
+  await page.reload();
+  await expect(card.getByRole('button', { name: 'Remove saved Route audit engineer' })).toBeVisible();
+  await card.getByRole('button', { name: 'Remove saved Route audit engineer' }).click();
+  await expect(card.getByRole('button', { name: 'Save Route audit engineer' })).toBeVisible();
+
   expect(errors).toEqual([]);
 });
