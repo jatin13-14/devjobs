@@ -3,15 +3,16 @@
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import ListAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.exceptions import PermissionDenied
 
 from apps.accounts.models import User
 from apps.candidates.models import CandidateProfile
+
 from .api import JobSerializer, _public_jobs
 from .models import Job, SavedJob
 
