@@ -970,6 +970,36 @@ paths:
         '401': { description: Authentication required. }
         '403': { description: Active candidate role required. }
         '404': { description: Candidate profile missing or invalid page. }
+  /api/v1/candidates/me/saved-jobs/statuses/:
+    get:
+      summary: Look up candidate-owned saved status for up to 100 job cards in one query
+      operationId: listCandidateSavedJobStatuses
+      security: [{ bearerAuth: [] }]
+      description: >-
+        Each repeated job_id must be a UUID. The result reveals only the
+        authenticated candidate's own saved IDs, not other candidates or
+        private job content. The caller should send only public result IDs.
+      parameters:
+        - { in: query, name: job_id, schema: { type: array, maxItems: 100, items: { type: string, format: uuid } }, style: form, explode: true, description: Repeated job_id keys, at most 100. }
+      responses:
+        '200':
+          description: Saved job IDs among the supplied IDs.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [saved_job_ids]
+                properties:
+                  saved_job_ids:
+                    type: array
+                    maxItems: 100
+                    uniqueItems: true
+                    items: { type: string, format: uuid }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { description: Authentication required. }
+        '403': { description: Active candidate required. }
+        '404': { description: Candidate profile missing. }
   /api/v1/candidates/me/saved-jobs/{job_id}/:
     parameters:
       - { in: path, name: job_id, required: true, schema: { type: string, format: uuid } }
