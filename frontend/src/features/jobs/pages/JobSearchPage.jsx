@@ -54,7 +54,8 @@ function JobSearchView({ user }) {
     return () => { active = false; };
   }, [user?.role, data, loading, error, bookmarkRetry, bookmarkView]);
   async function toggleBookmark(id) {
-    if (!bookmarkView.valid() || busyBookmark || !bookmarks || bookmarkError) return;
+    if (!bookmarkView.valid() || bookmarkView.busy || busyBookmark || !bookmarks || bookmarkError) return;
+    bookmarkView.busy = true;
     const config = bookmarkView.config;
     const wasSaved = bookmarks.has(id);
     setBusyBookmark(id);
@@ -72,6 +73,7 @@ function JobSearchView({ user }) {
     } catch (reason) {
       if (bookmarkView.valid()) setBookmarkError(reason.response?.status === 404 ? 'This job is no longer available.' : 'Could not update saved job. Please retry.');
     } finally {
+      bookmarkView.busy = false;
       if (bookmarkView.valid()) setBusyBookmark(null);
     }
   }
