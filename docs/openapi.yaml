@@ -949,6 +949,107 @@ paths:
         '400': { $ref: '#/components/responses/ValidationError' }
         '401': { description: "Authentication required." }
         '403': { description: "Candidate role required." }
+  /api/v1/candidates/me/saved-jobs/:
+    get:
+      summary: List this candidate's saved and currently publicly visible jobs
+      operationId: listCandidateSavedJobs
+      security: [{ bearerAuth: [] }]
+      description: >-
+        Candidate-only bookmarks. Results exclude jobs that are drafts, closed, hidden,
+        suspended through their company, or past application deadlines. Bookmarks persist
+        when a job becomes ineligible and can still be removed through the item endpoint.
+      parameters:
+        - { in: query, name: page, schema: { type: integer, minimum: 1 } }
+        - { in: query, name: page_size, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: A paginated collection ordered by newest saved first.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SavedJobPage' }
+        '401': { description: Authentication required. }
+        '403': { description: Active candidate role required. }
+        '404': { description: Candidate profile missing or invalid page. }
+  /api/v1/candidates/me/saved-jobs/statuses/:
+    get:
+      summary: Look up candidate-owned saved status for up to 100 job cards in one query
+      operationId: listCandidateSavedJobStatuses
+      security: [{ bearerAuth: [] }]
+      description: >-
+        Each repeated job_id must be a UUID. The result reveals only the
+        authenticated candidate's own saved IDs, not other candidates or
+        private job content. The caller should send only public result IDs.
+      parameters:
+        - { in: query, name: job_id, schema: { type: array, maxItems: 100, items: { type: string, format: uuid } }, style: form, explode: true, description: Repeated job_id keys, at most 100. }
+      responses:
+        '200':
+          description: Saved job IDs among the supplied IDs.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [saved_job_ids]
+                properties:
+                  saved_job_ids:
+                    type: array
+                    maxItems: 100
+                    uniqueItems: true
+                    items: { type: string, format: uuid }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '401': { description: Authentication required. }
+        '403': { description: Active candidate required. }
+        '404': { description: Candidate profile missing. }
+  /api/v1/candidates/me/saved-jobs/{job_id}/:
+    parameters:
+      - { in: path, name: job_id, required: true, schema: { type: string, format: uuid } }
+    get:
+      summary: Check whether the current candidate has bookmarked this job
+      operationId: getCandidateSavedJobStatus
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Candidate-owned bookmark state.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [saved]
+                properties:
+                  saved: { type: boolean }
+        '401': { description: Authentication required. }
+        '403': { description: Active candidate required. }
+        '404': { description: Candidate profile missing. }
+    put:
+      summary: Save a currently public job for the authenticated candidate
+      operationId: saveCandidateJob
+      security: [{ bearerAuth: [] }]
+      description: Idempotent operation; creates on first request and returns the same existing bookmark on subsequent requests. No body is required.
+      responses:
+        '201':
+          description: Newly created bookmark.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SavedJob' }
+        '200':
+          description: Existing bookmark returned unchanged.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SavedJob' }
+        '401': { description: Authentication required. }
+        '403': { description: Active candidate required. }
+        '404': { description: Job not publicly visible or candidate profile missing. }
+    delete:
+      summary: Unsave a job owned by the current candidate
+      operationId: unsaveCandidateJob
+      security: [{ bearerAuth: [] }]
+      description: Idempotent; removes existing or stale bookmarks without requiring the job to remain public.
+      responses:
+        '204': { description: Bookmark removed or already absent; no response body. }
+        '401': { description: Authentication required. }
+        '403': { description: Active candidate required. }
+        '404': { description: Candidate profile missing. }
   /api/v1/candidates/me/skills/:
     get:
       summary: List the authenticated candidate skills
@@ -1983,6 +2084,24 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ModerationEvent'
+    SavedJob:
+      type: object
+      additionalProperties: false
+      required: [job, saved_at]
+      properties:
+        job: { $ref: '#/components/schemas/Job' }
+        saved_at: { type: string, format: date-time }
+    SavedJobPage:
+      type: object
+      additionalProperties: false
+      required: [count, next, previous, results]
+      properties:
+        count: { type: integer, minimum: 0 }
+        next: { type: [string, 'null'], format: uri }
+        previous: { type: [string, 'null'], format: uri }
+        results:
+          type: array
+          items: { $ref: '#/components/schemas/SavedJob' }
     JobPage:
       type: object
       required:

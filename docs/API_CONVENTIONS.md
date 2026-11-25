@@ -485,3 +485,31 @@ query evidence and the outstanding legacy retirement policy.
 Cursor application retrieval always uses applied_at DESC/id ASC, ignoring the
 legacy OrderingFilter input so nullable/nonunique user-selected fields cannot
 skip ties or produce invalid seek boundaries. Page-mode ordering is unchanged.
+
+
+## P1-01 candidate saved jobs
+
+The authenticated active candidate owns bookmarks under
+`/api/v1/candidates/me/saved-jobs/`. GET returns a page-number envelope
+`{count,next,previous,results}` (default 20, maximum 100), newest saves first.
+Each item contains `{job,saved_at}`; `job` uses the existing public
+`JobSerializer` representation. Bookmarks from draft/closed/hidden/expired jobs
+or suspended companies are excluded from list results, but are not deleted.
+The caller's bookmarked state is never included in public job lists or detail
+responses. Candidate job-discovery cards make a single GET to
+`/api/v1/candidates/me/saved-jobs/statuses/?job_id=UUID&job_id=UUID`
+using repeated UUID query keys (max 100). Response `saved_job_ids` contains
+only caller-owned bookmark job IDs and no private job content; malformed IDs,
+unknown query fields and oversized batches return 400.
+
+`/api/v1/candidates/me/saved-jobs/{job_id}/` supports GET `{saved: boolean}`,
+idempotent PUT (201 created, 200 previously saved) and idempotent DELETE (204,
+even when absent or when the job becomes nonpublic). PUT is limited to
+currently public jobs; no request body or user/candidate identifier is taken.
+Candidate ownership comes exclusively from the authenticated session.
+Anonymous callers return 401, recruiters/admins return 403, and unknown/nonpublic
+jobs return 404 on PUT. DB uniqueness enforces one bookmark per candidate/job.
+
+This is an additive API and `jobs.0004_savedjob` migration, not a change to
+applications or recruiter job management. See
+[P1_01_SAVED_JOBS.md](P1_01_SAVED_JOBS.md) and OpenAPI for exact contracts.

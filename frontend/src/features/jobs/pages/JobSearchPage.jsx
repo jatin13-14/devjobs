@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Card, Drawer, Empty, Input, Pagination, Select, Spin, Tag } from 'antd';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../../auth/useAuth.js';
+import { useViewAuthority } from '../../auth/useViewAuthority.js';
 import { jobsApi } from '../services/api.js';
 import { formatJobDate, formatSalary, labelFor } from '../utils/format.js';
 
@@ -13,6 +15,16 @@ const filters = [
 ];
 
 export function JobSearchPage() {
+  const { user } = useAuth();
+  return <JobSearchView key={user?.id || 'anonymous'} user={user} />;
+}
+
+function JobSearchView({ user }) {
+  const bookmarkView = useViewAuthority('job-search-bookmarks');
+  const [bookmarks, setBookmarks] = useState(null);
+  const [bookmarkError, setBookmarkError] = useState('');
+  const [bookmarkRetry, setBookmarkRetry] = useState(0);
+  const [busyBookmark, setBusyBookmark] = useState(null);
   const [params, setParams] = useSearchParams();
   const [filtersOpen, setFiltersOpen] = useState(false);
   useEffect(() => { setSearch(params.get('search') || ''); }, [params]);
@@ -26,6 +38,45 @@ export function JobSearchPage() {
       .catch(() => { if (active) setError('Jobs could not be loaded. Please try again.'); })
       .finally(() => { if (active) setLoading(false); });
   }, 300); return () => { active = false; clearTimeout(timer); }; }, [query, retryKey]);
+  useEffect(() => {
+    if (user?.role !== 'candidate' || loading || error || !data?.results || !bookmarkView.valid()) return;
+    let active = true;
+    const config = bookmarkView.config;
+    setBookmarks(null);
+    setBookmarkError('');
+    jobsApi.savedJobStatuses(data.results.map((job) => job.id), config)
+      .then((result) => {
+        if (active && bookmarkView.valid()) setBookmarks(new Set(result.saved_job_ids));
+      })
+      .catch(() => {
+        if (active && bookmarkView.valid()) setBookmarkError('Saved job status could not be loaded.');
+      });
+    return () => { active = false; };
+  }, [user?.role, data, loading, error, bookmarkRetry, bookmarkView]);
+  async function toggleBookmark(id) {
+    if (!bookmarkView.valid() || bookmarkView.busy || busyBookmark || !bookmarks || bookmarkError) return;
+    bookmarkView.busy = true;
+    const config = bookmarkView.config;
+    const wasSaved = bookmarks.has(id);
+    setBusyBookmark(id);
+    setBookmarkError('');
+    try {
+      if (wasSaved) await jobsApi.unsaveJob(id, config);
+      else await jobsApi.saveJob(id, config);
+      if (!bookmarkView.valid()) return;
+      setBookmarks((old) => {
+        const next = new Set(old);
+        if (wasSaved) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+    } catch (reason) {
+      if (bookmarkView.valid()) setBookmarkError(reason.response?.status === 404 ? 'This job is no longer available.' : 'Could not update saved job. Please retry.');
+    } finally {
+      bookmarkView.busy = false;
+      if (bookmarkView.valid()) setBusyBookmark(null);
+    }
+  }
   function update(name, value, resetPage = true) { const next = new URLSearchParams(params); if (value) next.set(name, value); else next.delete(name); if (resetPage) next.delete('page'); setParams(next); }
   const filterControls = <><h2>Filters</h2>{params.size > 0 && <Button type="link" onClick={() => { setSearch(''); setParams({}); }}>Clear filters</Button>}{filters.map(([name, label, options]) => options
         ? <label className="filter-field" key={name}>{label}<Select aria-label={label} allowClear placeholder={`Any ${label.toLowerCase()}`} value={params.get(name) || undefined} onChange={(value) => update(name, value)} options={options.map((value) => ({ value, label: labelFor(value) }))} /></label>
@@ -39,9 +90,10 @@ export function JobSearchPage() {
       <Drawer title="Filter jobs" open={filtersOpen} onClose={() => setFiltersOpen(false)}><div className="job-filters">{filterControls}</div><Button type="primary" onClick={() => setFiltersOpen(false)}>Show results</Button></Drawer>
       <div className="job-results" aria-live="polite">
         {error && <Alert type="error" showIcon title={error} action={<button className="text-button" onClick={() => setRetryKey((value) => value + 1)}>Retry</button>} />}
+        {user?.role === 'candidate' && bookmarkError && <Alert type="error" showIcon title={bookmarkError} action={<Button onClick={() => setBookmarkRetry((value) => value + 1)}>Retry saved jobs</Button>} />}
         {loading ? <div className="jobs-loading"><Spin /><span>Loading jobs…</span></div> : !error && data?.results?.length === 0 ? <Empty description="No jobs match these filters."><Button onClick={() => { setSearch(''); setParams({}); }}>Clear filters</Button></Empty> : !error && <>
           <p className="results-count">{data?.count || 0} opportunities</p>
-          {data?.results?.map((job) => <Card key={job.id} className="job-card" hoverable><Link to={`/jobs/${job.id}`} className="job-card-link"><div className="job-card-top"><div><h2>{job.title}</h2><p className="company-name">{job.company?.name}</p></div><span className="job-date">{formatJobDate(job.published_at || job.created_at)}</span></div><p className="job-meta">{[job.location, job.country, labelFor(job.workplace_type), labelFor(job.employment_type), labelFor(job.experience_level)].filter(Boolean).join(' · ')}</p>{formatSalary(job) && <p className="job-salary">{formatSalary(job)}</p>}<div className="job-tags">{(job.skills || []).map((skill) => <Tag key={skill}>{skill}</Tag>)}</div></Link></Card>)}
+          {data?.results?.map((job) => <Card key={job.id} className="job-card" hoverable><Link to={`/jobs/${job.id}`} className="job-card-link"><div className="job-card-top"><div><h2>{job.title}</h2><p className="company-name">{job.company?.name}</p></div><span className="job-date">{formatJobDate(job.published_at || job.created_at)}</span></div><p className="job-meta">{[job.location, job.country, labelFor(job.workplace_type), labelFor(job.employment_type), labelFor(job.experience_level)].filter(Boolean).join(' · ')}</p>{formatSalary(job) && <p className="job-salary">{formatSalary(job)}</p>}<div className="job-tags">{(job.skills || []).map((skill) => <Tag key={skill}>{skill}</Tag>)}</div></Link>{user?.role === 'candidate' && <Button aria-label={`${bookmarks?.has(job.id) ? 'Remove saved' : 'Save'} ${job.title}`} onClick={() => toggleBookmark(job.id)} loading={busyBookmark === job.id} disabled={!bookmarks || Boolean(bookmarkError) || Boolean(busyBookmark) || !bookmarkView.valid()}>{bookmarks?.has(job.id) ? 'Remove saved job' : 'Save job'}</Button>}</Card>)}
           <Pagination current={Number(params.get('page') || 1)} pageSize={20} total={data?.count || 0} onChange={(page) => update('page', String(page), false)} showSizeChanger={false} />
         </>}
       </div>

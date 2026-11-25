@@ -13,6 +13,7 @@ export function routeMatrix({ company, job, application }) {
     ['/candidate/profile', '/candidate/profile', 'Candidate profile', 'candidate'],
     ['/candidate/skills', '/candidate/skills', 'My skills', 'candidate'],
     ['/candidate/resume', '/candidate/resume', 'My resume', 'candidate'],
+    ['/candidate/saved-jobs', '/candidate/saved-jobs', 'Saved jobs', 'candidate'],
     ['/jobs/:id/apply', `/jobs/${job}/apply`, 'Route audit engineer', 'candidate'],
     ['/candidate/applications', '/candidate/applications', 'My applications', 'candidate'],
     ['/candidate/applications/:applicationId', `/candidate/applications/${application}`, 'Route audit engineer', 'candidate'],

@@ -332,3 +332,144 @@ class JobApiTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(str(response.data["results"][0]["id"]), str(job_id))
+
+    def test_saved_jobs_are_candidate_only_idempotent_and_private(self):
+        from apps.candidates.models import CandidateProfile
+        from apps.jobs.models import SavedJob
+
+        created = self.create_job()
+        job_id = created.data["id"]
+        self.client.post(f"/api/v1/jobs/{job_id}/publish/")
+        first_user = self.make_user("saved-one", User.Role.CANDIDATE)
+        second_user = self.make_user("saved-two", User.Role.CANDIDATE)
+        CandidateProfile.objects.create(user=first_user, full_name="Candidate One")
+        CandidateProfile.objects.create(user=second_user, full_name="Candidate Two")
+        collection = "/api/v1/candidates/me/saved-jobs/"
+        detail = f"{collection}{job_id}/"
+
+        self.client.force_authenticate(None)
+        self.assertEqual(self.client.get(collection).status_code, 401)
+        self.client.force_authenticate(self.owner)
+        self.assertEqual(self.client.get(collection).status_code, 403)
+        self.assertEqual(self.client.put(detail).status_code, 403)
+
+        self.client.force_authenticate(first_user)
+        self.assertEqual(self.client.get(detail).data["saved"], False)
+        self.assertEqual(self.client.put(detail).status_code, 201)
+        self.assertEqual(self.client.put(detail).status_code, 200)
+        self.assertEqual(SavedJob.objects.count(), 1)
+        self.assertEqual(self.client.get(detail).data["saved"], True)
+        listing = self.client.get(collection)
+        self.assertEqual(listing.status_code, 200)
+        self.assertEqual(listing.data["count"], 1)
+        self.assertEqual(str(listing.data["results"][0]["job"]["id"]), str(job_id))
+
+        self.client.force_authenticate(second_user)
+        self.assertEqual(self.client.get(collection).data["count"], 0)
+        self.assertEqual(self.client.get(detail).data["saved"], False)
+        self.assertEqual(self.client.delete(detail).status_code, 204)
+        self.assertEqual(SavedJob.objects.count(), 1)
+
+        self.client.force_authenticate(first_user)
+        self.assertEqual(self.client.delete(detail).status_code, 204)
+        self.assertEqual(self.client.delete(detail).status_code, 204)
+        self.assertEqual(self.client.get(collection).data["count"], 0)
+
+    def test_saved_jobs_do_not_expose_drafts_or_hidden_closed_expired_jobs(self):
+        from apps.candidates.models import CandidateProfile
+        from apps.jobs.models import Job
+
+        candidate = self.make_user("saved-visibility", User.Role.CANDIDATE)
+        CandidateProfile.objects.create(user=candidate, full_name="Candidate Visibility")
+        created = self.create_job()
+        job_id = created.data["id"]
+        detail = f"/api/v1/candidates/me/saved-jobs/{job_id}/"
+        collection = "/api/v1/candidates/me/saved-jobs/"
+        self.client.force_authenticate(candidate)
+        self.assertEqual(self.client.put(detail).status_code, 404)
+        self.client.force_authenticate(self.owner)
+        self.client.post(f"/api/v1/jobs/{job_id}/publish/")
+        self.client.force_authenticate(candidate)
+        self.assertEqual(self.client.put(detail).status_code, 201)
+        for update in (
+            {"is_hidden": True},
+            {"is_hidden": False, "status": Job.Status.CLOSED},
+            {"status": Job.Status.PUBLISHED, "application_deadline": timezone.localdate() - timedelta(days=1)},
+        ):
+            Job.objects.filter(pk=job_id).update(**update)
+            self.assertEqual(self.client.get(collection).data["count"], 0)
+            self.assertEqual(self.client.put(detail).status_code, 404)
+        self.assertEqual(self.client.delete(detail).status_code, 204)
+
+    def test_saved_jobs_pagination_and_company_suspension(self):
+        from apps.candidates.models import CandidateProfile
+        from apps.companies.models import Company
+        from apps.jobs.models import SavedJob
+
+        candidate = self.make_user("saved-pages", User.Role.CANDIDATE)
+        CandidateProfile.objects.create(user=candidate, full_name="Saved pages candidate")
+        job_ids = []
+        for index in range(22):
+            created = self.create_job(payload={**self.payload, "title": f"Saved page job {index}"})
+            job_id = created.data["id"]
+            self.client.post(f"/api/v1/jobs/{job_id}/publish/")
+            job_ids.append(job_id)
+        self.client.force_authenticate(candidate)
+        for job_id in job_ids:
+            self.assertEqual(
+                self.client.put(f"/api/v1/candidates/me/saved-jobs/{job_id}/").status_code,
+                201,
+            )
+        url = "/api/v1/candidates/me/saved-jobs/"
+        first = self.client.get(url)
+        second = self.client.get(url, {"page": 2})
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(first.data["count"], 22)
+        self.assertEqual(len(first.data["results"]), 20)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(len(second.data["results"]), 2)
+        self.assertFalse(
+            {str(row["job"]["id"]) for row in first.data["results"]}
+            & {str(row["job"]["id"]) for row in second.data["results"]}
+        )
+        self.assertEqual(self.client.get(url, {"page_size": 1000}).data["count"], 22)
+
+        Company.objects.filter(pk=self.company.pk).update(is_suspended=True)
+        self.assertEqual(self.client.get(url).data["count"], 0)
+        self.assertEqual(
+            self.client.put(f"{url}{job_ids[0]}/").status_code, 404
+        )
+        self.assertEqual(SavedJob.objects.count(), 22)
+        self.assertEqual(
+            self.client.delete(f"{url}{job_ids[0]}/").status_code, 204
+        )
+        self.assertEqual(SavedJob.objects.count(), 21)
+
+    def test_saved_job_batch_statuses_are_bounded_and_candidate_private(self):
+        from apps.candidates.models import CandidateProfile
+
+        created = self.create_job()
+        job_id = created.data["id"]
+        self.client.post(f"/api/v1/jobs/{job_id}/publish/")
+        other = self.create_job(payload={**self.payload, "title": "Second saved lookup"})
+        other_id = other.data["id"]
+        self.client.post(f"/api/v1/jobs/{other_id}/publish/")
+        candidate = self.make_user("saved-batch-one", User.Role.CANDIDATE)
+        other_candidate = self.make_user("saved-batch-two", User.Role.CANDIDATE)
+        CandidateProfile.objects.create(user=candidate, full_name="Batch candidate one")
+        CandidateProfile.objects.create(user=other_candidate, full_name="Batch candidate two")
+        url = "/api/v1/candidates/me/saved-jobs/statuses/"
+        self.client.force_authenticate(self.owner)
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.client.force_authenticate(candidate)
+        self.assertEqual(
+            self.client.put(f"/api/v1/candidates/me/saved-jobs/{job_id}/").status_code, 201
+        )
+        response = self.client.get(url, {"job_id": [str(job_id), str(other_id)]})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, {"saved_job_ids": [str(job_id)]})
+        self.assertEqual(self.client.get(url, {"job_id": ["not-a-uuid"]}).status_code, 400)
+        self.assertEqual(self.client.get(url, {"job_id": [str(job_id)] * 101}).status_code, 400)
+        self.assertEqual(self.client.get(url, {"unknown": "value"}).status_code, 400)
+        self.client.force_authenticate(other_candidate)
+        self.assertEqual(self.client.get(url, {"job_id": [str(job_id)]}).data["saved_job_ids"], [])

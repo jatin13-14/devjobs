@@ -35,6 +35,11 @@ from apps.companies.api import (
     CompanyMembersView,
 )
 from apps.jobs.api import CompanyJobsView, JobCollectionView, JobDetailView, JobTransitionView
+from apps.jobs.saved_api import (
+    CandidateSavedJobDetailView,
+    CandidateSavedJobStatusesView,
+    CandidateSavedJobsView,
+)
 from apps.moderation.api import CollectionView, DetailView, HistoryView, OverviewView
 from apps.recruiters.api import RecruiterCompaniesView, RecruiterProfileView
 from config.health import ReadinessView
@@ -98,6 +103,9 @@ urlpatterns = [
     path("api/v1/auth/logout/", LogoutView.as_view(), name="logout"),
     path("api/v1/candidates/me/profile/", CandidateProfileView.as_view(), name="candidate-profile"),
     path("api/v1/candidates/me/skills/", CandidateSkillsView.as_view(), name="candidate-skills"),
+    path("api/v1/candidates/me/saved-jobs/", CandidateSavedJobsView.as_view(), name="candidate-saved-jobs"),
+    path("api/v1/candidates/me/saved-jobs/statuses/", CandidateSavedJobStatusesView.as_view(), name="candidate-saved-job-statuses"),
+    path("api/v1/candidates/me/saved-jobs/<uuid:job_id>/", CandidateSavedJobDetailView.as_view(), name="candidate-saved-job-detail"),
     path(
         "api/v1/candidates/me/skills/<uuid:skill_id>/",
         CandidateSkillDetailView.as_view(),
