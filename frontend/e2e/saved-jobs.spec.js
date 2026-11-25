@@ -41,10 +41,21 @@ test('candidate saves, reloads, unsaves and remains isolated from another candid
   await page.goto(`/jobs/${job}`);
   await expect(page.getByRole('button', { name: 'Save job', exact: true })).toBeVisible();
 
+  // Route fixtures are minted before the long Chromium suite starts, so the
+  // owner's original access JWT may expire before this authorization check.
+  // Refresh it with the same owned test session; a valid recruiter must get
+  // 403 rather than an expired-token 401.
   const owner = fixtures.accounts.owner;
+  const refreshed = await page.request.post(
+    `${process.env.E2E_BACKEND_URL}/api/v1/auth/token/refresh/`,
+    { data: { refresh: owner.refresh } },
+  );
+  expect(refreshed.status(), 'Recruiter test session must refresh').toBe(200);
+  const { access: ownerAccess } = await refreshed.json();
+  expect(ownerAccess).toBeTruthy();
   const forbidden = await page.request.get(
     `${process.env.E2E_BACKEND_URL}/api/v1/candidates/me/saved-jobs/`,
-    { headers: { Authorization: `Bearer ${owner.access}` } },
+    { headers: { Authorization: `Bearer ${ownerAccess}` } },
   );
   expect(forbidden.status()).toBe(403);
 
