@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 const fixtures = JSON.parse(process.env.E2E_ROUTE_FIXTURES || '{}');
+const existingCandidates = JSON.parse(process.env.E2E_SKILLS_ACCOUNTS || '{}');
 
 async function identity(page, role) {
   await page.goto('/');
@@ -9,14 +10,14 @@ async function identity(page, role) {
       schema: 1, epoch: crypto.randomUUID(), revision: 1, pendingLogin: null, credentials,
     }));
     window.dispatchEvent(new StorageEvent('storage', { key: 'devjobs.auth.v2' }));
-  }, fixtures.accounts[role]);
+  }, role === 'candidate_other' ? existingCandidates['tab-a'] : fixtures.accounts[role]);
 }
 
 test('candidate saves, reloads, unsaves and remains isolated from another candidate', async ({ page }) => {
   test.setTimeout(120000);
   const job = fixtures.job;
   expect(job, 'Run the owned backend/run_browser.py harness').toBeTruthy();
-  expect(fixtures.accounts.candidate_other).toBeTruthy();
+  expect(existingCandidates['tab-a']).toBeTruthy();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
 
