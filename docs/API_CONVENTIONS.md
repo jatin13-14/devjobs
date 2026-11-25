@@ -496,7 +496,11 @@ Each item contains `{job,saved_at}`; `job` uses the existing public
 `JobSerializer` representation. Bookmarks from draft/closed/hidden/expired jobs
 or suspended companies are excluded from list results, but are not deleted.
 The caller's bookmarked state is never included in public job lists or detail
-responses.
+responses. Candidate job-discovery cards make a single GET to
+`/api/v1/candidates/me/saved-jobs/statuses/?job_id=UUID&job_id=UUID`
+using repeated UUID query keys (max 100). Response `saved_job_ids` contains
+only caller-owned bookmark job IDs and no private job content; malformed IDs,
+unknown query fields and oversized batches return 400.
 
 `/api/v1/candidates/me/saved-jobs/{job_id}/` supports GET `{saved: boolean}`,
 idempotent PUT (201 created, 200 previously saved) and idempotent DELETE (204,
