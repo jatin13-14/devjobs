@@ -53,6 +53,29 @@ class CandidateSavedJobsView(ListAPIView):
         )
 
 
+class CandidateSavedJobStatusesView(APIView):
+    """One bounded query checks the current candidate's job-card bookmarks."""
+
+    permission_classes = (IsAuthenticated,)
+
+    def get(self, request):
+        candidate = candidate_for(request)
+        if set(request.query_params) - {"job_id"}:
+            raise serializers.ValidationError({"detail": "Unsupported query parameter."})
+        values = request.query_params.getlist("job_id")
+        if len(values) > 100:
+            raise serializers.ValidationError({"job_id": ["At most 100 job IDs are supported."]})
+        field = serializers.UUIDField()
+        try:
+            ids = [field.run_validation(value) for value in values]
+        except serializers.ValidationError as error:
+            raise serializers.ValidationError({"job_id": error.detail}) from error
+        saved_ids = SavedJob.objects.filter(
+            candidate=candidate, job_id__in=ids
+        ).values_list("job_id", flat=True)
+        return Response({"saved_job_ids": sorted(str(value) for value in saved_ids)})
+
+
 class CandidateSavedJobDetailView(APIView):
     permission_classes = (IsAuthenticated,)
 
