@@ -55,6 +55,10 @@ class CandidateSavedJobsView(ListAPIView):
 class CandidateSavedJobDetailView(APIView):
     permission_classes = (IsAuthenticated,)
 
+    def get(self, request, job_id):
+        candidate = candidate_for(request)
+        return Response({"saved": SavedJob.objects.filter(candidate=candidate, job_id=job_id).exists()})
+
     def put(self, request, job_id):
         candidate = candidate_for(request)
         job = get_object_or_404(_public_jobs(Job.objects.all()), pk=job_id)
