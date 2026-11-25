@@ -7,6 +7,12 @@ import { apiMessage, jobsApi } from '../services/api.js';
 import { formatJobDate, formatSalary, labelFor } from '../utils/format.js';
 
 export function JobDetailPage() {
+  const { id } = useParams();
+  const { user } = useAuth();
+  return <JobDetailView key={`${id}:${user?.id || 'anonymous'}`} />;
+}
+
+function JobDetailView() {
   const { id } = useParams(); const { user } = useAuth(); const navigate = useNavigate();
   const [revision, setRevision] = useState(0);
   const bookmarkView = useViewAuthority(id);
