@@ -2,10 +2,16 @@ import { useEffect, useState } from 'react';
 import { Alert, Button, Card, Empty, Pagination, Spin } from 'antd';
 import { Link } from 'react-router-dom';
 import { useViewAuthority } from '../../auth/useViewAuthority.js';
+import { useAuth } from '../../auth/useAuth.js';
 import { apiMessage, jobsApi } from '../services/api.js';
 import { formatSalary, labelFor } from '../utils/format.js';
 
 export function SavedJobsPage() {
+  const { user } = useAuth();
+  return <CandidateSavedJobsView key={user?.id || 'anonymous'} />;
+}
+
+function CandidateSavedJobsView() {
   const view = useViewAuthority('saved-jobs');
   const [page, setPage] = useState(1);
   const [revision, setRevision] = useState(0);
