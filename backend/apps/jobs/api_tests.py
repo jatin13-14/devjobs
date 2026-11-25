@@ -444,3 +444,32 @@ class JobApiTests(APITestCase):
             self.client.delete(f"{url}{job_ids[0]}/").status_code, 204
         )
         self.assertEqual(SavedJob.objects.count(), 21)
+
+    def test_saved_job_batch_statuses_are_bounded_and_candidate_private(self):
+        from apps.candidates.models import CandidateProfile
+
+        created = self.create_job()
+        job_id = created.data["id"]
+        self.client.post(f"/api/v1/jobs/{job_id}/publish/")
+        other = self.create_job(payload={**self.payload, "title": "Second saved lookup"})
+        other_id = other.data["id"]
+        self.client.post(f"/api/v1/jobs/{other_id}/publish/")
+        candidate = self.make_user("saved-batch-one", User.Role.CANDIDATE)
+        other_candidate = self.make_user("saved-batch-two", User.Role.CANDIDATE)
+        CandidateProfile.objects.create(user=candidate, full_name="Batch candidate one")
+        CandidateProfile.objects.create(user=other_candidate, full_name="Batch candidate two")
+        url = "/api/v1/candidates/me/saved-jobs/statuses/"
+        self.client.force_authenticate(self.owner)
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.client.force_authenticate(candidate)
+        self.assertEqual(
+            self.client.put(f"/api/v1/candidates/me/saved-jobs/{job_id}/").status_code, 201
+        )
+        response = self.client.get(url, {"job_id": [str(job_id), str(other_id)]})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, {"saved_job_ids": [str(job_id)]})
+        self.assertEqual(self.client.get(url, {"job_id": ["not-a-uuid"]}).status_code, 400)
+        self.assertEqual(self.client.get(url, {"job_id": [str(job_id)] * 101}).status_code, 400)
+        self.assertEqual(self.client.get(url, {"unknown": "value"}).status_code, 400)
+        self.client.force_authenticate(other_candidate)
+        self.assertEqual(self.client.get(url, {"job_id": [str(job_id)]}).data["saved_job_ids"], [])
