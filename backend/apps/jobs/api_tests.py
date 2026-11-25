@@ -400,3 +400,47 @@ class JobApiTests(APITestCase):
             self.assertEqual(self.client.get(collection).data["count"], 0)
             self.assertEqual(self.client.put(detail).status_code, 404)
         self.assertEqual(self.client.delete(detail).status_code, 204)
+
+    def test_saved_jobs_pagination_and_company_suspension(self):
+        from apps.candidates.models import CandidateProfile
+        from apps.companies.models import Company
+        from apps.jobs.models import SavedJob
+
+        candidate = self.make_user("saved-pages", User.Role.CANDIDATE)
+        CandidateProfile.objects.create(user=candidate, full_name="Saved pages candidate")
+        job_ids = []
+        for index in range(22):
+            created = self.create_job(payload={**self.payload, "title": f"Saved page job {index}"})
+            job_id = created.data["id"]
+            self.client.post(f"/api/v1/jobs/{job_id}/publish/")
+            job_ids.append(job_id)
+        self.client.force_authenticate(candidate)
+        for job_id in job_ids:
+            self.assertEqual(
+                self.client.put(f"/api/v1/candidates/me/saved-jobs/{job_id}/").status_code,
+                201,
+            )
+        url = "/api/v1/candidates/me/saved-jobs/"
+        first = self.client.get(url)
+        second = self.client.get(url, {"page": 2})
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(first.data["count"], 22)
+        self.assertEqual(len(first.data["results"]), 20)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(len(second.data["results"]), 2)
+        self.assertFalse(
+            {str(row["job"]["id"]) for row in first.data["results"]}
+            & {str(row["job"]["id"]) for row in second.data["results"]}
+        )
+        self.assertEqual(self.client.get(url, {"page_size": 1000}).data["count"], 22)
+
+        Company.objects.filter(pk=self.company.pk).update(is_suspended=True)
+        self.assertEqual(self.client.get(url).data["count"], 0)
+        self.assertEqual(
+            self.client.put(f"{url}{job_ids[0]}/").status_code, 404
+        )
+        self.assertEqual(SavedJob.objects.count(), 22)
+        self.assertEqual(
+            self.client.delete(f"{url}{job_ids[0]}/").status_code, 204
+        )
+        self.assertEqual(SavedJob.objects.count(), 21)
