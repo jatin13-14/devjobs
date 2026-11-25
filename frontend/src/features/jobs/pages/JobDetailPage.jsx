@@ -38,7 +38,8 @@ function JobDetailView() {
     return () => { active = false; };
   }, [id, user?.role, bookmarkView, savedRevision]);
   async function toggleSaved() {
-    if (!bookmarkView.valid() || saving || savedLoading || saveError) return;
+    if (!bookmarkView.valid() || bookmarkView.busy || saving || savedLoading || saveError) return;
+    bookmarkView.busy = true;
     const config = bookmarkView.config;
     setSaving(true);
     setSaveError('');
@@ -49,6 +50,7 @@ function JobDetailView() {
     } catch (reason) {
       if (bookmarkView.valid()) setSaveError(apiMessage(reason));
     } finally {
+      bookmarkView.busy = false;
       if (bookmarkView.valid()) setSaving(false);
     }
   }
