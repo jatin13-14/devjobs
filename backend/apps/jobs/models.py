@@ -120,3 +120,27 @@ class JobSkill(models.Model):
         constraints = (
             models.UniqueConstraint(fields=("job", "skill"), name="jobs_job_skill_unique"),
         )
+
+
+class SavedJob(models.Model):
+    """A candidate's private bookmark; visibility is checked when the list is read."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    candidate = models.ForeignKey(
+        "candidates.CandidateProfile",
+        on_delete=models.CASCADE,
+        related_name="saved_jobs",
+    )
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="saved_by")
+    saved_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-saved_at", "-id")
+        constraints = (
+            models.UniqueConstraint(
+                fields=("candidate", "job"), name="jobs_saved_candidate_job_unique"
+            ),
+        )
+        indexes = (
+            models.Index(fields=("candidate", "-saved_at"), name="jobs_saved_candidate_date_idx"),
+        )
