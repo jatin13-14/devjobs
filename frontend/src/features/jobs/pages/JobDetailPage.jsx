@@ -9,6 +9,38 @@ import { formatJobDate, formatSalary, labelFor } from '../utils/format.js';
 export function JobDetailPage() {
   const { id } = useParams(); const { user } = useAuth(); const navigate = useNavigate();
   const [revision, setRevision] = useState(0);
+  const bookmarkView = useViewAuthority(id);
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  useEffect(() => {
+    if (user?.role !== 'candidate' || !bookmarkView.valid()) return;
+    let active = true;
+    const config = bookmarkView.config;
+    setSaved(false);
+    setSaveError('');
+    jobsApi.savedJobStatus(id, config).then((result) => {
+      if (active && bookmarkView.valid()) setSaved(Boolean(result.saved));
+    }).catch((reason) => {
+      if (active && bookmarkView.valid()) setSaveError(apiMessage(reason));
+    });
+    return () => { active = false; };
+  }, [id, user?.role, bookmarkView]);
+  async function toggleSaved() {
+    if (!bookmarkView.valid() || saving) return;
+    const config = bookmarkView.config;
+    setSaving(true);
+    setSaveError('');
+    try {
+      if (saved) await jobsApi.unsaveJob(id, config);
+      else await jobsApi.saveJob(id, config);
+      if (bookmarkView.valid()) setSaved((value) => !value);
+    } catch (reason) {
+      if (bookmarkView.valid()) setSaveError(apiMessage(reason));
+    } finally {
+      if (bookmarkView.valid()) setSaving(false);
+    }
+  }
   const [job, setJob] = useState(null); const [loading, setLoading] = useState(true); const [error, setError] = useState('');
   useEffect(() => { let active = true; setLoading(true); setError(''); jobsApi.detail(id).then((value) => { if (active) setJob(value); }).catch((e) => { if (active) setError(apiMessage(e)); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [id, revision]);
   if (loading) return <div className="page-state"><Spin description="Loading job…" /></div>;
@@ -18,6 +50,8 @@ export function JobDetailPage() {
     <div className="detail-facts"><span>Posted {formatJobDate(job.published_at || job.created_at)}</span>{job.application_deadline && <span>Apply by {formatJobDate(job.application_deadline)}</span>}</div>
     {job.skills?.length > 0 && <section><h2>Required skills</h2><div className="job-tags">{job.skills.map((skill) => <Tag key={skill}>{skill}</Tag>)}</div></section>}
     <section className="job-description"><h2>About the role</h2><p>{job.description}</p></section>
+    {saveError && <Alert type="error" showIcon title={saveError} />}
+    {user?.role === 'candidate' && <Button onClick={toggleSaved} loading={saving} disabled={!bookmarkView.valid()}>{saved ? 'Remove saved job' : 'Save job'}</Button>}
     {user?.role === 'candidate' && <Button type="primary" size="large" onClick={apply}>Apply for this job</Button>}
     {user?.role === 'recruiter' && <Alert type="info" title="Candidate applications are available to candidate accounts." showIcon />}
     {!user && <Button type="primary" size="large" onClick={apply}>Log in to apply</Button>}
