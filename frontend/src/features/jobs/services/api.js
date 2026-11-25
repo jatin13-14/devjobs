@@ -5,6 +5,10 @@ export const jobsApi = {
   detail: (id) => http.get(`/jobs/${id}/`).then(({ data }) => data),
   savedJobs: (params, config) => http.get('/candidates/me/saved-jobs/', { ...config, params }).then(({ data }) => data),
   savedJobStatus: (id, config) => http.get(`/candidates/me/saved-jobs/${id}/`, config).then(({ data }) => data),
+  savedJobStatuses: (ids, config) => http.get('/candidates/me/saved-jobs/statuses/', {
+    ...config,
+    params: new URLSearchParams(ids.map((id) => ['job_id', id])),
+  }).then(({ data }) => data),
   saveJob: (id, config) => http.put(`/candidates/me/saved-jobs/${id}/`, {}, config).then(({ data }) => data),
   unsaveJob: (id, config) => http.delete(`/candidates/me/saved-jobs/${id}/`, config),
   apply: (id, payload, config) => http.post(`/jobs/${id}/applications/`, payload, config).then(({ data }) => data),
