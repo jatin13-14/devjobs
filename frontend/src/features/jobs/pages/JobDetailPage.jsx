@@ -17,6 +17,8 @@ function JobDetailView() {
   const [revision, setRevision] = useState(0);
   const bookmarkView = useViewAuthority(id);
   const [saved, setSaved] = useState(false);
+  const [savedLoading, setSavedLoading] = useState(true);
+  const [savedRevision, setSavedRevision] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   useEffect(() => {
@@ -24,16 +26,19 @@ function JobDetailView() {
     let active = true;
     const config = bookmarkView.config;
     setSaved(false);
+    setSavedLoading(true);
     setSaveError('');
     jobsApi.savedJobStatus(id, config).then((result) => {
       if (active && bookmarkView.valid()) setSaved(Boolean(result.saved));
     }).catch((reason) => {
       if (active && bookmarkView.valid()) setSaveError(apiMessage(reason));
+    }).finally(() => {
+      if (active && bookmarkView.valid()) setSavedLoading(false);
     });
     return () => { active = false; };
-  }, [id, user?.role, bookmarkView]);
+  }, [id, user?.role, bookmarkView, savedRevision]);
   async function toggleSaved() {
-    if (!bookmarkView.valid() || saving) return;
+    if (!bookmarkView.valid() || saving || savedLoading || saveError) return;
     const config = bookmarkView.config;
     setSaving(true);
     setSaveError('');
@@ -56,8 +61,8 @@ function JobDetailView() {
     <div className="detail-facts"><span>Posted {formatJobDate(job.published_at || job.created_at)}</span>{job.application_deadline && <span>Apply by {formatJobDate(job.application_deadline)}</span>}</div>
     {job.skills?.length > 0 && <section><h2>Required skills</h2><div className="job-tags">{job.skills.map((skill) => <Tag key={skill}>{skill}</Tag>)}</div></section>}
     <section className="job-description"><h2>About the role</h2><p>{job.description}</p></section>
-    {saveError && <Alert type="error" showIcon title={saveError} />}
-    {user?.role === 'candidate' && <Button onClick={toggleSaved} loading={saving} disabled={!bookmarkView.valid()}>{saved ? 'Remove saved job' : 'Save job'}</Button>}
+    {saveError && user?.role === 'candidate' && <Alert type="error" showIcon title={saveError} action={<Button onClick={() => setSavedRevision((value) => value + 1)}>Retry saved status</Button>} />}
+    {user?.role === 'candidate' && <Button onClick={toggleSaved} loading={saving || savedLoading} disabled={!bookmarkView.valid() || savedLoading || Boolean(saveError)}>{saved ? 'Remove saved job' : 'Save job'}</Button>}
     {user?.role === 'candidate' && <Button type="primary" size="large" onClick={apply}>Apply for this job</Button>}
     {user?.role === 'recruiter' && <Alert type="info" title="Candidate applications are available to candidate accounts." showIcon />}
     {!user && <Button type="primary" size="large" onClick={apply}>Log in to apply</Button>}
