@@ -34,7 +34,8 @@ function CandidateSavedJobsView() {
   }, [page, revision, view]);
 
   async function remove(id) {
-    if (!view.valid() || removing) return;
+    if (!view.valid() || view.busy || removing) return;
+    view.busy = true;
     const config = view.config;
     setRemoving(id);
     setError('');
@@ -46,6 +47,7 @@ function CandidateSavedJobsView() {
     } catch (reason) {
       if (view.valid()) setError(apiMessage(reason));
     } finally {
+      view.busy = false;
       if (view.valid()) setRemoving(null);
     }
   }
