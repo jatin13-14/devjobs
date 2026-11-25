@@ -15,6 +15,7 @@ const CandidateRegistrationPage = lazy(() => import('../features/auth/AuthPages.
 const RecruiterRegistrationPage = lazy(() => import('../features/auth/AuthPages.jsx').then((module) => ({ default: module.RecruiterRegistrationPage })));
 const JobDetailPage = lazy(() => import('../features/jobs/pages/JobDetailPage.jsx').then((module) => ({ default: module.JobDetailPage })));
 const JobApplicationPage = lazy(() => import('../features/jobs/pages/JobDetailPage.jsx').then((module) => ({ default: module.JobApplicationPage })));
+const SavedJobsPage = lazy(() => import('../features/jobs/pages/SavedJobsPage.jsx').then((module) => ({ default: module.SavedJobsPage })));
 const ApplicationsPage = lazy(() => import('../features/jobs/pages/ApplicationsPage.jsx').then((module) => ({ default: module.ApplicationsPage })));
 const ApplicationDetailPage = lazy(() => import('../features/jobs/pages/ApplicationsPage.jsx').then((module) => ({ default: module.ApplicationDetailPage })));
 const RecruiterDashboardPage = lazy(() => import('../features/jobs/pages/RecruiterPages.jsx').then((module) => ({ default: module.RecruiterDashboardPage })));
@@ -51,6 +52,7 @@ function RouteContent() {
             <Route path="/candidate/skills" element={<ProfilePage candidate skillsOnly />} />
             <Route path="/jobs/:id/apply" element={<JobApplicationPage />} />
             <Route path="/candidate/resume" element={<ResumePage />} />
+            <Route path="/candidate/saved-jobs" element={<SavedJobsPage />} />
             <Route path="/candidate/applications" element={<ApplicationsPage />} />
             <Route path="/candidate/applications/:applicationId" element={<ApplicationDetailPage />} />
           </Route>
